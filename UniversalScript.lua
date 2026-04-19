@@ -2,8 +2,7 @@
 -- Fixed version with injection safety
 
 -- Wait for game to fully load
-repeat task.wait(0.1) until game:IsLoaded()
-task.wait(1)
+if not game:IsLoaded() then game.Loaded:Wait() end
 
 local success, err = pcall(function()
 
