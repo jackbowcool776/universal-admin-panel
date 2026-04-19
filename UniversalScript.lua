@@ -1,5 +1,5 @@
 -- Universal Script by Claude
--- Toggle switch version
+-- Toggle switch version with speed inputs
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 
@@ -38,6 +38,7 @@ local States = {
 }
 
 local SpeedValue = 50
+local FlySpeed = 50
 local OriginalWalkSpeed = getHumanoid().WalkSpeed
 local OriginalAmbient = Lighting.Ambient
 local OriginalBrightness = Lighting.Brightness
@@ -97,14 +98,13 @@ local function toggleFly()
             end
             local cam = workspace.CurrentCamera
             local dir = Vector3.new(0,0,0)
-            local spd = 50
             if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
             if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
             if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
             if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0,1,0) end
             if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0,1,0) end
-            bv.Velocity = dir * spd
+            bv.Velocity = dir * FlySpeed
             bg.CFrame = cam.CFrame
         end)
     else
@@ -267,8 +267,8 @@ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 pcall(function() gui.Parent = game:GetService("CoreGui") end)
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0,240,0,420)
-MainFrame.Position = UDim2.new(0,20,0.5,-210)
+MainFrame.Size = UDim2.new(0,240,0,530)
+MainFrame.Position = UDim2.new(0,20,0.5,-265)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25,25,35)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = gui
@@ -320,49 +320,56 @@ padding.PaddingLeft = UDim.new(0,10)
 padding.PaddingRight = UDim.new(0,10)
 padding.Parent = Content
 
--- Speed label
-local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Size = UDim2.new(1,0,0,18)
-SpeedLabel.BackgroundTransparency = 1
-SpeedLabel.TextColor3 = Color3.fromRGB(180,180,180)
-SpeedLabel.Font = Enum.Font.Gotham
-SpeedLabel.TextSize = 12
-SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-SpeedLabel.Text = "Speed Value: 50"
-SpeedLabel.Parent = Content
+-- =====================
+-- INPUT BOX CREATOR
+-- =====================
+local function createInputBox(labelText, defaultVal, onChanged)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1,0,0,52)
+    container.BackgroundColor3 = Color3.fromRGB(35,35,48)
+    container.BorderSizePixel = 0
+    container.Parent = Content
+    Instance.new("UICorner", container).CornerRadius = UDim.new(0,8)
 
--- Speed input
-local SpeedInput = Instance.new("TextBox")
-SpeedInput.Size = UDim2.new(1,0,0,28)
-SpeedInput.BackgroundColor3 = Color3.fromRGB(40,40,55)
-SpeedInput.TextColor3 = Color3.fromRGB(255,255,255)
-SpeedInput.Font = Enum.Font.Gotham
-SpeedInput.TextSize = 14
-SpeedInput.Text = "50"
-SpeedInput.PlaceholderText = "Enter speed..."
-SpeedInput.BorderSizePixel = 0
-SpeedInput.Parent = Content
-Instance.new("UICorner", SpeedInput).CornerRadius = UDim.new(0,6)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1,-10,0,22)
+    lbl.Position = UDim2.new(0,10,0,4)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(180,180,180)
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Text = labelText .. ": " .. defaultVal
+    lbl.Parent = container
 
-SpeedInput.FocusLost:Connect(function()
-    local val = tonumber(SpeedInput.Text)
-    if val then
-        SpeedValue = val
-        SpeedLabel.Text = "Speed Value: " .. val
-        if States.Speed then
-            local hum = getHumanoid()
-            if hum then hum.WalkSpeed = SpeedValue end
+    local input = Instance.new("TextBox")
+    input.Size = UDim2.new(1,-20,0,22)
+    input.Position = UDim2.new(0,10,0,26)
+    input.BackgroundColor3 = Color3.fromRGB(50,50,68)
+    input.TextColor3 = Color3.fromRGB(255,255,255)
+    input.Font = Enum.Font.Gotham
+    input.TextSize = 13
+    input.Text = tostring(defaultVal)
+    input.PlaceholderText = "Enter value..."
+    input.BorderSizePixel = 0
+    input.Parent = container
+    Instance.new("UICorner", input).CornerRadius = UDim.new(0,5)
+
+    input.FocusLost:Connect(function()
+        local val = tonumber(input.Text)
+        if val then
+            lbl.Text = labelText .. ": " .. val
+            onChanged(val)
+        else
+            input.Text = tostring(defaultVal)
         end
-    else
-        SpeedInput.Text = tostring(SpeedValue)
-    end
-end)
+    end)
+end
 
 -- =====================
 -- TOGGLE SWITCH CREATOR
 -- =====================
 local function createToggleRow(labelText, toggleFunc, stateKey)
-    -- Row frame
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1,0,0,36)
     row.BackgroundColor3 = Color3.fromRGB(35,35,48)
@@ -370,7 +377,6 @@ local function createToggleRow(labelText, toggleFunc, stateKey)
     row.Parent = Content
     Instance.new("UICorner", row).CornerRadius = UDim.new(0,8)
 
-    -- Label
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1,-60,1,0)
     label.Position = UDim2.new(0,12,0,0)
@@ -382,7 +388,6 @@ local function createToggleRow(labelText, toggleFunc, stateKey)
     label.Text = labelText
     label.Parent = row
 
-    -- Switch background
     local switchBG = Instance.new("Frame")
     switchBG.Size = UDim2.new(0,44,0,24)
     switchBG.Position = UDim2.new(1,-52,0.5,-12)
@@ -391,7 +396,6 @@ local function createToggleRow(labelText, toggleFunc, stateKey)
     switchBG.Parent = row
     Instance.new("UICorner", switchBG).CornerRadius = UDim.new(1,0)
 
-    -- Switch circle
     local circle = Instance.new("Frame")
     circle.Size = UDim2.new(0,18,0,18)
     circle.Position = UDim2.new(0,3,0.5,-9)
@@ -400,14 +404,12 @@ local function createToggleRow(labelText, toggleFunc, stateKey)
     circle.Parent = switchBG
     Instance.new("UICorner", circle).CornerRadius = UDim.new(1,0)
 
-    -- Click button overlay
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1,0,1,0)
     btn.BackgroundTransparency = 1
     btn.Text = ""
     btn.Parent = row
 
-    -- Tween info
     local tweenOn = TweenService:Create(circle,
         TweenInfo.new(0.15, Enum.EasingStyle.Quad),
         {Position = UDim2.new(0,23,0.5,-9), BackgroundColor3 = Color3.fromRGB(255,255,255)}
@@ -437,24 +439,48 @@ local function createToggleRow(labelText, toggleFunc, stateKey)
     end)
 end
 
+-- =====================
+-- BUILD GUI ITEMS IN ORDER
+-- =====================
+
+-- Speed input THEN speed toggle
+createInputBox("Walk Speed", 50, function(val)
+    SpeedValue = val
+    if States.Speed then
+        local hum = getHumanoid()
+        if hum then hum.WalkSpeed = val end
+    end
+end)
 createToggleRow("Speed", toggleSpeed, "Speed")
+
+-- Fly speed input THEN fly toggle
+createInputBox("Fly Speed", 50, function(val)
+    FlySpeed = val
+end)
 createToggleRow("Fly", toggleFly, "Fly")
+
+-- Rest of toggles
 createToggleRow("Infinite Jump", toggleInfiniteJump, "InfiniteJump")
 createToggleRow("Anti-AFK", toggleAntiAFK, "AntiAFK")
 createToggleRow("Fullbright", toggleFullbright, "Fullbright")
 createToggleRow("ESP", toggleESP, "ESP")
 createToggleRow("Noclip", toggleNoclip, "Noclip")
 
--- Minimize
+-- =====================
+-- MINIMIZE
+-- =====================
 local minimized = false
+local fullHeight = 530
 MinBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     Content.Visible = not minimized
-    MainFrame.Size = minimized and UDim2.new(0,240,0,40) or UDim2.new(0,240,0,420)
+    MainFrame.Size = minimized and UDim2.new(0,240,0,40) or UDim2.new(0,240,0,fullHeight)
     MinBtn.Text = minimized and "+" or "-"
 end)
 
--- Dragging
+-- =====================
+-- DRAGGING
+-- =====================
 local dragging, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
