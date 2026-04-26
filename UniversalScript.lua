@@ -30,6 +30,7 @@ repeat task.wait(0.1) until getCharacter() and getHumanoid() and getRootPart()
 local States = {
     Speed = false, Fly = false, InfiniteJump = false,
     AntiAFK = false, Fullbright = false, ESP = false, Noclip = false,
+    NoStreamPause = false,
 }
 
 local SpeedValue = 50
@@ -1261,6 +1262,46 @@ makeInput(worldContent, "Brightness (0.1-10)", 2, function(v)
     end
 end, 0.1, 10)
 makeToggle(worldContent, "ESP", toggleESP, "ESP")
+makeToggle(worldContent, "No Pause When Flying", function()
+    States.NoStreamPause = not States.NoStreamPause
+    if States.NoStreamPause then
+        if not _G.StreamConn then
+            _G.StreamConn = RunService.Heartbeat:Connect(function()
+                if not States.NoStreamPause then
+                    _G.StreamConn:Disconnect()
+                    _G.StreamConn = nil
+                    return
+                end
+                pcall(function()
+                    local root = getRootPart()
+                    if root then LocalPlayer.ReplicationFocus = root end
+                    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+                    if playerGui then
+                        for _, g in pairs(playerGui:GetChildren()) do
+                            if g.Name == "StreamingEnabledGui" and g.Enabled then
+                                g.Enabled = false
+                            end
+                        end
+                    end
+                end)
+            end)
+        end
+    else
+        if _G.StreamConn then
+            _G.StreamConn:Disconnect()
+            _G.StreamConn = nil
+        end
+        pcall(function()
+            local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+            if playerGui then
+                for _, g in pairs(playerGui:GetChildren()) do
+                    if g.Name == "StreamingEnabledGui" then g.Enabled = true end
+                end
+            end
+        end)
+    end
+    notify("No Pause", States.NoStreamPause and "ON" or "OFF")
+end, "NoStreamPause")
 makeSection(worldContent, "Gravity")
 makeInput(worldContent, "Gravity", 196, function(v) workspace.Gravity = v end, 0)
 makeSection(worldContent, "Time of Day")
@@ -1335,89 +1376,6 @@ makeSection(playerContent, "Server")
 makeButton(playerContent, "🔄 Rejoin Same Server", function() rejoin() end)
 makeButton(playerContent, "🌐 Server Hop", function() serverHop() end, Color3.fromRGB(120,60,180))
 makeButton(playerContent, "💀 Reset Character", function() resetCharacter() end, Color3.fromRGB(180,50,50))
-
--- Smooth streaming button - removes the pause/loading screen when moving fast
-local streamingEnabled = false
-local smoothStreamBtn = Instance.new("TextButton")
-smoothStreamBtn.Size = UDim2.new(1,0,0,34)
-smoothStreamBtn.BackgroundColor3 = COLORS.accent
-smoothStreamBtn.TextColor3 = Color3.fromRGB(255,255,255)
-smoothStreamBtn.Font = Enum.Font.GothamBold
-smoothStreamBtn.TextSize = 13
-smoothStreamBtn.Text = "🌊 Smooth Streaming: OFF"
-smoothStreamBtn.BorderSizePixel = 0
-smoothStreamBtn.Parent = playerContent
-Instance.new("UICorner", smoothStreamBtn).CornerRadius = UDim.new(0,8)
-
-smoothStreamBtn.MouseButton1Click:Connect(function()
-    streamingEnabled = not streamingEnabled
-    if streamingEnabled then
-        smoothStreamBtn.Text = "🌊 Smooth Streaming: ON"
-        smoothStreamBtn.BackgroundColor3 = COLORS.switchOn
-        -- Disable the streaming pause by overriding the content streaming settings
-        pcall(function()
-            -- Remove streaming pause screen
-            local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
-            if playerGui then
-                for _, gui in pairs(playerGui:GetChildren()) do
-                    if gui.Name == "StreamingEnabledGui" then
-                        gui.Enabled = false
-                    end
-                end
-            end
-            -- Increase streaming radius so more content loads around you
-            local streamingService = game:GetService("Players")
-            LocalPlayer.ReplicationFocus = LocalPlayer.Character and
-                LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or nil
-        end)
-        -- Keep disabling the pause screen every frame
-        if not _G.StreamConn then
-            _G.StreamConn = RunService.Heartbeat:Connect(function()
-                if not streamingEnabled then
-                    _G.StreamConn:Disconnect()
-                    _G.StreamConn = nil
-                    return
-                end
-                pcall(function()
-                    -- Keep replication focus on our character so world loads around us
-                    local root = getRootPart()
-                    if root then
-                        LocalPlayer.ReplicationFocus = root
-                    end
-                    -- Hide any streaming pause screen that appears
-                    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
-                    if playerGui then
-                        for _, g in pairs(playerGui:GetChildren()) do
-                            if g.Name == "StreamingEnabledGui" and g.Enabled then
-                                g.Enabled = false
-                            end
-                        end
-                    end
-                end)
-            end)
-        end
-        notify("Smooth Streaming", "ON - pause screen removed")
-    else
-        smoothStreamBtn.Text = "🌊 Smooth Streaming: OFF"
-        smoothStreamBtn.BackgroundColor3 = COLORS.accent
-        if _G.StreamConn then
-            _G.StreamConn:Disconnect()
-            _G.StreamConn = nil
-        end
-        -- Re-enable streaming gui
-        pcall(function()
-            local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
-            if playerGui then
-                for _, g in pairs(playerGui:GetChildren()) do
-                    if g.Name == "StreamingEnabledGui" then
-                        g.Enabled = true
-                    end
-                end
-            end
-        end)
-        notify("Smooth Streaming", "OFF")
-    end
-end)
 
 -- COMMANDS TAB
 local cmdsContent = newTab("💬 Cmds")
