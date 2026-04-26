@@ -326,7 +326,7 @@ FlyWin.Size = UDim2.new(0, 320, 0, 270)
 FlyWin.Position = UDim2.new(0, 300, 0.3, 0)
 FlyWin.BackgroundColor3 = Color3.fromRGB(15,15,22)
 FlyWin.BorderSizePixel = 0
-FlyWin.Visible = true
+FlyWin.Visible = false
 FlyWin.Parent = gui
 Instance.new("UICorner", FlyWin).CornerRadius = UDim.new(0,16)
 
@@ -921,15 +921,27 @@ local function makePlayerPicker(parent)
     dropScroll.Position = UDim2.new(0,10,0,50)
     dropScroll.BackgroundColor3 = COLORS.drop
     dropScroll.BorderSizePixel = 0
-    dropScroll.ScrollBarThickness = 5
+    dropScroll.ScrollBarThickness = 6
     dropScroll.ScrollBarImageColor3 = Color3.fromRGB(120,120,160)
-    dropScroll.CanvasSize = UDim2.new(0,0,0,0) -- set manually below
-    dropScroll.AutomaticCanvasSize = Enum.AutomaticSize.None -- OFF to avoid conflict
+    dropScroll.CanvasSize = UDim2.new(0,0,0,0)
+    dropScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
     dropScroll.ClipsDescendants = true
     dropScroll.ScrollingEnabled = true
+    dropScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    dropScroll.ElasticBehavior = Enum.ElasticBehavior.Never
     dropScroll.Visible = false
+    dropScroll.ZIndex = 20
     dropScroll.Parent = outer
     Instance.new("UICorner", dropScroll).CornerRadius = UDim.new(0,6)
+
+    -- Allow mouse wheel scrolling by forwarding input
+    dropScroll.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseWheel then
+            local newPos = dropScroll.CanvasPosition.Y - (input.Position.Z * 40)
+            newPos = math.clamp(newPos, 0, dropScroll.CanvasSize.Y.Offset - dropScroll.AbsoluteSize.Y)
+            dropScroll.CanvasPosition = Vector2.new(0, newPos)
+        end
+    end)
 
     local dl = Instance.new("UIListLayout")
     dl.Padding = UDim.new(0,3)
