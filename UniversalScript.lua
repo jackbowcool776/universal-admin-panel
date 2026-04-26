@@ -32,6 +32,9 @@ local States = {
     AntiAFK = false, Fullbright = false, ESP = false, Noclip = false,
 }
 
+-- Declared early so fly enable/disable functions can update the UI
+local switchRefs = {}
+
 local SpeedValue = 50
 local FlySpeed = 50
 local JumpPowerValue = 50
@@ -743,13 +746,13 @@ FlySpeedBox.FocusLost:Connect(function()
     local v = tonumber(FlySpeedBox.Text)
     if v and v > 0 then
         FlySpeed = v
-        FlySpeedBox.Text = tostring(v)
-        FlyActualLabel.Text = "Actual: "..v.." studs/sec"
+        local displayStr = v == math.floor(v) and string.format("%.0f", v) or tostring(v)
+        FlySpeedBox.Text = displayStr
+        FlyActualLabel.Text = "Actual: "..displayStr.." studs/sec"
         if moveTabFlyBox then
-            moveTabFlyBox.Text = tostring(v)
+            moveTabFlyBox.Text = displayStr
         end
     else
-        -- reset to last valid value
         FlySpeedBox.Text = tostring(FlySpeed)
     end
 end)
@@ -973,7 +976,6 @@ end
 -- =====================
 -- HELPERS
 -- =====================
-local switchRefs = {}
 
 local function makeSection(parent, text)
     local l = Instance.new("TextLabel")
@@ -1027,8 +1029,10 @@ local function makeInput(parent, label, default, onChange, minVal, maxVal)
             if minVal and v < minVal then v = minVal end
             if maxVal and v > maxVal then v = maxVal end
             currentVal = v
-            box.Text = tostring(v)
-            lbl.Text = label..": "..v
+            -- Format as integer if it's a whole number to avoid 1e+28 style display
+            local displayStr = v == math.floor(v) and string.format("%.0f", v) or tostring(v)
+            box.Text = displayStr
+            lbl.Text = label..": "..displayStr
             onChange(v)
         else
             -- not a number, reset to last valid value
