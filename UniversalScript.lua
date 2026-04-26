@@ -298,7 +298,50 @@ end
 
 local function rejoin()
     pcall(function()
-        game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+        local TeleportService = game:GetService("TeleportService")
+        -- Rejoin the exact same server using JobId
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end)
+end
+
+local function resetCharacter()
+    local hum = getHumanoid()
+    if hum then
+        hum.Health = 0
+        notify("Reset", "Character reset!")
+    end
+end
+
+local function serverHop()
+    notify("Server Hop", "Finding a new server...")
+    pcall(function()
+        local TeleportService = game:GetService("TeleportService")
+        local HttpService = game:GetService("HttpService")
+        local placeId = game.PlaceId
+        local currentJobId = game.JobId
+
+        -- Fetch server list via Roblox API
+        local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
+        local response = HttpService:JSONDecode(game:HttpGet(url))
+
+        if response and response.data then
+            local servers = response.data
+            -- shuffle so we don't always pick first
+            for i = #servers, 2, -1 do
+                local j = math.random(i)
+                servers[i], servers[j] = servers[j], servers[i]
+            end
+            for _, server in ipairs(servers) do
+                -- skip current server and full servers
+                if server.id ~= currentJobId and server.playing < server.maxPlayers then
+                    TeleportService:TeleportToPlaceInstance(placeId, server.id, LocalPlayer)
+                    return
+                end
+            end
+            notify("Server Hop", "No open servers found!")
+        else
+            notify("Server Hop", "Failed to fetch servers!")
+        end
     end)
 end
 
@@ -1108,7 +1151,9 @@ makeButton(playerContent, "👁 Spectate / Stop", function()
     if t then spectatePlayer(t) else notify("Spectate","Pick a player first!") end
 end)
 makeSection(playerContent, "Server")
-makeButton(playerContent, "🔄 Rejoin Server", function() rejoin() end)
+makeButton(playerContent, "🔄 Rejoin Same Server", function() rejoin() end)
+makeButton(playerContent, "🌐 Server Hop", function() serverHop() end, Color3.fromRGB(120,60,180))
+makeButton(playerContent, "💀 Reset Character", function() resetCharacter() end, Color3.fromRGB(180,50,50))
 
 -- COMMANDS TAB
 local cmdsContent = newTab("💬 Cmds")
@@ -1122,7 +1167,9 @@ local cmdList = {
     {"!esp",         "Toggle ESP"},
     {"!noclip",      "Turn noclip ON"},
     {"!unnoclip",    "Turn noclip OFF"},
-    {"!rejoin",      "Rejoin the server"},
+    {"!rejoin",      "Rejoin same server"},
+    {"!hop",         "Server hop to new server"},
+    {"!reset",       "Reset your character"},
     {"!tp [name]",   "Teleport to player"},
     {"!spec [name]", "Spectate a player"},
 }
@@ -1212,6 +1259,8 @@ LocalPlayer.Chatted:Connect(function(msg)
             if switchRefs["Noclip"] then switchRefs["Noclip"](false) end
         end
     elseif cmd == "!rejoin" then rejoin()
+    elseif cmd == "!reset" then resetCharacter()
+    elseif cmd == "!hop" then serverHop()
     elseif cmd == "!tp" and args[2] then teleportToPlayer(args[2])
     elseif cmd == "!spec" and args[2] then spectatePlayer(args[2])
     end
