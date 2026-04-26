@@ -149,9 +149,22 @@ LocalPlayer.CharacterAdded:Connect(function(char)
         if h then
             h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
             if _G.FallDmgConn then _G.FallDmgConn:Disconnect() end
-            _G.FallDmgConn = h.StateChanged:Connect(function(_, new)
-                if new == Enum.HumanoidStateType.Landed then
-                    h.Health = h.Health
+            _G.LastHealth = nil
+            _G.FallDmgConn = RunService.Heartbeat:Connect(function()
+                local hum = getHumanoid()
+                if hum and States.NoFallDamage then
+                    local state = hum:GetState()
+                    if state == Enum.HumanoidStateType.Landed or
+                       state == Enum.HumanoidStateType.Freefall then
+                        _G.LastHealth = hum.Health > 0 and hum.Health or _G.LastHealth
+                    end
+                    if state == Enum.HumanoidStateType.Running or
+                       state == Enum.HumanoidStateType.Landed then
+                        if _G.LastHealth and hum.Health < _G.LastHealth - 5 then
+                            hum.Health = _G.LastHealth
+                        end
+                        _G.LastHealth = hum.Health
+                    end
                 end
             end)
         end
@@ -393,9 +406,9 @@ FlyCloseBtn.Size = UDim2.new(0,38,0,38)
 FlyCloseBtn.Position = UDim2.new(1,-46,0.5,-19)
 FlyCloseBtn.BackgroundColor3 = Color3.fromRGB(210,50,50)
 FlyCloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
-FlyCloseBtn.Font = Enum.Font.GothamBold
-FlyCloseBtn.TextSize = 16
-FlyCloseBtn.Text = "✕"
+FlyCloseBtn.Font = Enum.Font.GothamBlack
+FlyCloseBtn.TextSize = 18
+FlyCloseBtn.Text = "X"
 FlyCloseBtn.BorderSizePixel = 0
 FlyCloseBtn.ZIndex = 7
 FlyCloseBtn.Parent = FlyTitleBar
@@ -1046,23 +1059,38 @@ makeToggle(moveContent, "No Fall Damage", function()
     local hum = getHumanoid()
     if hum then
         if States.NoFallDamage then
-            hum.BreakJointsOnDeath = false
-            -- Connect to keep fall damage at 0
+            -- Natural Disaster Survival uses TakeDamage for fall damage
+            -- Override it so it only blocks fall damage (negative health changes from falling)
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            -- Store original max health and keep health topped up on landing
             if not _G.FallDmgConn then
-                _G.FallDmgConn = hum.StateChanged:Connect(function(_, new)
-                    if new == Enum.HumanoidStateType.Landed then
-                        hum.Health = hum.Health
+                _G.FallDmgConn = RunService.Heartbeat:Connect(function()
+                    local h = getHumanoid()
+                    if h and States.NoFallDamage then
+                        local state = h:GetState()
+                        if state == Enum.HumanoidStateType.Landed or
+                           state == Enum.HumanoidStateType.Freefall then
+                            -- grab health before landing kills us
+                            _G.LastHealth = h.Health > 0 and h.Health or _G.LastHealth
+                        end
+                        -- if health suddenly dropped right after landing, restore it
+                        if state == Enum.HumanoidStateType.Running or
+                           state == Enum.HumanoidStateType.Landed then
+                            if _G.LastHealth and h.Health < _G.LastHealth - 5 then
+                                h.Health = _G.LastHealth
+                            end
+                            _G.LastHealth = h.Health
+                        end
                     end
                 end)
-                -- Override fall damage via FallingDown state
-                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
             end
         else
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
             if _G.FallDmgConn then
                 _G.FallDmgConn:Disconnect()
                 _G.FallDmgConn = nil
             end
-            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            _G.LastHealth = nil
         end
     end
     notify("No Fall Damage", States.NoFallDamage and "ON" or "OFF")
