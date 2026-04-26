@@ -948,13 +948,6 @@ local function makePlayerPicker(parent)
     dl.SortOrder = Enum.SortOrder.LayoutOrder
     dl.Parent = dropScroll
 
-    local dp = Instance.new("UIPadding")
-    dp.PaddingTop = UDim.new(0,4)
-    dp.PaddingBottom = UDim.new(0,4)
-    dp.PaddingLeft = UDim.new(0,4)
-    dp.PaddingRight = UDim.new(0,4)
-    dp.Parent = dropScroll
-
     local function closeDropdown()
         dropOpen = false
         selBtn.Text = (chosenName or "Click to pick player").." ▾"
@@ -988,9 +981,9 @@ local function makePlayerPicker(parent)
             none.Font = Enum.Font.Gotham
             none.TextSize = 12
             none.Text = "No other players"
+            none.ZIndex = 22
             none.Parent = dropScroll
-            -- canvas = one item
-            dropScroll.CanvasSize = UDim2.new(0,0,0,28 + PAD)
+            dropScroll.CanvasSize = UDim2.new(0,0,0,36)
         else
             for i, name in ipairs(playerList) do
                 local item = Instance.new("TextButton")
@@ -1002,6 +995,7 @@ local function makePlayerPicker(parent)
                 item.Text = name
                 item.BorderSizePixel = 0
                 item.LayoutOrder = i
+                item.ZIndex = 22
                 item.Parent = dropScroll
                 Instance.new("UICorner", item).CornerRadius = UDim.new(0,5)
 
@@ -1017,7 +1011,6 @@ local function makePlayerPicker(parent)
                 end)
             end
 
-            -- Total canvas height = all items + spacing + padding
             local totalCanvas = #playerList * (ITEM_H + SPACING) + PAD
             dropScroll.CanvasSize = UDim2.new(0, 0, 0, totalCanvas)
         end
