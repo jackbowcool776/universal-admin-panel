@@ -145,29 +145,18 @@ LocalPlayer.CharacterAdded:Connect(function(char)
         if h then h.WalkSpeed = SpeedValue end
     end
     if States.NoFallDamage then
-        local h = getHumanoid()
-        if h then
-            h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-            if _G.FallDmgConn then _G.FallDmgConn:Disconnect() end
-            _G.LastHealth = nil
-            _G.FallDmgConn = RunService.Heartbeat:Connect(function()
-                local hum = getHumanoid()
-                if hum and States.NoFallDamage then
-                    local state = hum:GetState()
-                    if state == Enum.HumanoidStateType.Landed or
-                       state == Enum.HumanoidStateType.Freefall then
-                        _G.LastHealth = hum.Health > 0 and hum.Health or _G.LastHealth
-                    end
-                    if state == Enum.HumanoidStateType.Running or
-                       state == Enum.HumanoidStateType.Landed then
-                        if _G.LastHealth and hum.Health < _G.LastHealth - 5 then
-                            hum.Health = _G.LastHealth
-                        end
-                        _G.LastHealth = hum.Health
-                    end
-                end
-            end)
-        end
+        if _G.FallDmgConn then _G.FallDmgConn:Disconnect() end
+        _G.FallDmgConn = RunService.Heartbeat:Connect(function()
+            if not States.NoFallDamage then
+                _G.FallDmgConn:Disconnect()
+                _G.FallDmgConn = nil
+                return
+            end
+            local hum = getHumanoid()
+            if hum and hum.Health > 0 and hum.Health < hum.MaxHealth then
+                hum.Health = hum.MaxHealth
+            end
+        end)
     end
 end)
 
@@ -1056,41 +1045,26 @@ makeToggle(moveContent, "Noclip", toggleNoclip, "Noclip")
 makeToggle(moveContent, "Anti-AFK", toggleAntiAFK, "AntiAFK")
 makeToggle(moveContent, "No Fall Damage", function()
     States.NoFallDamage = not States.NoFallDamage
-    local hum = getHumanoid()
-    if hum then
-        if States.NoFallDamage then
-            -- Natural Disaster Survival uses TakeDamage for fall damage
-            -- Override it so it only blocks fall damage (negative health changes from falling)
-            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-            -- Store original max health and keep health topped up on landing
-            if not _G.FallDmgConn then
-                _G.FallDmgConn = RunService.Heartbeat:Connect(function()
-                    local h = getHumanoid()
-                    if h and States.NoFallDamage then
-                        local state = h:GetState()
-                        if state == Enum.HumanoidStateType.Landed or
-                           state == Enum.HumanoidStateType.Freefall then
-                            -- grab health before landing kills us
-                            _G.LastHealth = h.Health > 0 and h.Health or _G.LastHealth
-                        end
-                        -- if health suddenly dropped right after landing, restore it
-                        if state == Enum.HumanoidStateType.Running or
-                           state == Enum.HumanoidStateType.Landed then
-                            if _G.LastHealth and h.Health < _G.LastHealth - 5 then
-                                h.Health = _G.LastHealth
-                            end
-                            _G.LastHealth = h.Health
-                        end
-                    end
-                end)
-            end
-        else
-            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-            if _G.FallDmgConn then
-                _G.FallDmgConn:Disconnect()
-                _G.FallDmgConn = nil
-            end
-            _G.LastHealth = nil
+    if States.NoFallDamage then
+        -- NDS applies damage server-side so we cant block it
+        -- Instead we instantly heal back to max health every frame
+        if not _G.FallDmgConn then
+            _G.FallDmgConn = RunService.Heartbeat:Connect(function()
+                if not States.NoFallDamage then
+                    _G.FallDmgConn:Disconnect()
+                    _G.FallDmgConn = nil
+                    return
+                end
+                local hum = getHumanoid()
+                if hum and hum.Health > 0 and hum.Health < hum.MaxHealth then
+                    hum.Health = hum.MaxHealth
+                end
+            end)
+        end
+    else
+        if _G.FallDmgConn then
+            _G.FallDmgConn:Disconnect()
+            _G.FallDmgConn = nil
         end
     end
     notify("No Fall Damage", States.NoFallDamage and "ON" or "OFF")
