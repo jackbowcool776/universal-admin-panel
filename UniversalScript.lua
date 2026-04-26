@@ -34,6 +34,7 @@ local States = {
 
 local SpeedValue = 50
 local FlySpeed = 50
+local JumpPowerValue = 50
 local OriginalWalkSpeed = getHumanoid().WalkSpeed
 local OriginalAmbient = Lighting.Ambient
 local OriginalBrightness = Lighting.Brightness
@@ -142,6 +143,13 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     if States.Speed then
         local h = getHumanoid()
         if h then h.WalkSpeed = SpeedValue end
+    end
+    if JumpPowerValue and JumpPowerValue ~= 50 then
+        local h = getHumanoid()
+        if h then
+            pcall(function() h.JumpHeight = JumpPowerValue end)
+            pcall(function() h.JumpPower = JumpPowerValue end)
+        end
     end
 end)
 
@@ -1023,7 +1031,12 @@ end)
 makeToggle(moveContent, "Speed", toggleSpeed, "Speed")
 makeSection(moveContent, "Jump")
 makeInput(moveContent, "Jump Power", 50, function(v)
-    local h = getHumanoid() if h then h.JumpPower = v end
+    JumpPowerValue = v
+    local h = getHumanoid()
+    if h then
+        pcall(function() h.JumpHeight = v end)
+        pcall(function() h.JumpPower = v end)
+    end
 end)
 makeToggle(moveContent, "Infinite Jump", toggleInfiniteJump, "InfiniteJump")
 makeSection(moveContent, "Other")
