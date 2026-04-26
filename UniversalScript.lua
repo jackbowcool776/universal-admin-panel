@@ -306,25 +306,81 @@ local function teleportToPlayer(query)
 end
 
 local spectateConn = nil
-local function spectatePlayer(name)
+local spectateTarget = nil
+local originalCameraSubject = nil
+
+local function stopSpectate()
     if spectateConn then
-        spectateConn:Disconnect() spectateConn = nil
-        Camera.CameraType = Enum.CameraType.Custom
-        notify("Spectate", "Stopped spectating") return
+        spectateConn:Disconnect()
+        spectateConn = nil
     end
+    -- Restore camera back to local player
+    Camera.CameraType = Enum.CameraType.Custom
+    if originalCameraSubject then
+        Camera.CameraSubject = originalCameraSubject
+        originalCameraSubject = nil
+    else
+        local hum = getHumanoid()
+        if hum then Camera.CameraSubject = hum end
+    end
+    spectateTarget = nil
+    notify("Spectate", "Stopped spectating")
+end
+
+local function spectatePlayer(name)
+    -- If already spectating, stop
+    if spectateConn then
+        stopSpectate()
+        return
+    end
+
     local target = Players:FindFirstChild(name)
-    if target then
-        spectateConn = RunService.Heartbeat:Connect(function()
-            if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                Camera.CameraType = Enum.CameraType.Custom
-                Camera.CFrame = CFrame.lookAt(
-                    target.Character.HumanoidRootPart.CFrame.Position + Vector3.new(0,5,10),
-                    target.Character.HumanoidRootPart.Position
-                )
-            end
-        end)
-        notify("Spectate", "Spectating "..name)
-    else notify("Spectate", "Player not found!") end
+    if not target then
+        notify("Spectate", "Player not found!")
+        return
+    end
+
+    spectateTarget = target
+
+    local function attachCamera()
+        if not target or not target.Character then return end
+        local targetHum = target.Character:FindFirstChildOfClass("Humanoid")
+        local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+        if not targetHum or not targetRoot then return end
+
+        -- Save original subject
+        originalCameraSubject = Camera.CameraSubject
+
+        -- Use Roblox's built-in spectate by setting CameraSubject to their humanoid
+        -- This makes the camera follow them exactly like a real spectate
+        Camera.CameraType = Enum.CameraType.Custom
+        Camera.CameraSubject = targetHum
+    end
+
+    attachCamera()
+
+    -- Keep re-attaching if their character respawns
+    spectateConn = RunService.Heartbeat:Connect(function()
+        if not target or not target.Parent then
+            stopSpectate()
+            return
+        end
+        -- Re-attach if camera subject got lost
+        if Camera.CameraSubject == nil or
+           (Camera.CameraSubject and Camera.CameraSubject.Parent == nil) then
+            attachCamera()
+        end
+    end)
+
+    -- Also re-attach when target respawns
+    target.CharacterAdded:Connect(function()
+        if spectateTarget == target then
+            task.wait(0.5)
+            attachCamera()
+        end
+    end)
+
+    notify("Spectate", "Spectating "..target.DisplayName)
 end
 
 local function rejoin()
@@ -1198,9 +1254,15 @@ makeButton(playerContent, "🚀 Teleport to Player", function()
     local t = getTarget()
     if t then teleportToPlayer(t) else notify("Teleport","Pick a player first!") end
 end)
-makeButton(playerContent, "👁 Spectate / Stop", function()
+makeButton(playerContent, "👁 Spectate / Stop Spectate", function()
     local t = getTarget()
-    if t then spectatePlayer(t) else notify("Spectate","Pick a player first!") end
+    if spectateConn then
+        stopSpectate()
+    elseif t then
+        spectatePlayer(t)
+    else
+        notify("Spectate","Pick a player first!")
+    end
 end)
 makeSection(playerContent, "Server")
 makeButton(playerContent, "🔄 Rejoin Same Server", function() rejoin() end)
@@ -1314,7 +1376,9 @@ LocalPlayer.Chatted:Connect(function(msg)
     elseif cmd == "!reset" then resetCharacter()
     elseif cmd == "!hop" then serverHop()
     elseif cmd == "!to" and args[2] then teleportToPlayer(args[2])
-    elseif cmd == "!spec" and args[2] then spectatePlayer(args[2])
+    elseif cmd == "!spec" and args[2] then
+        if spectateConn then stopSpectate()
+        else spectatePlayer(args[2]) end
     end
 end)
 
