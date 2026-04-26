@@ -311,22 +311,30 @@ local originalCameraSubject = nil
 local resetPickerCallback = nil -- set after player picker is created
 
 local function stopSpectate()
-    -- disconnect heartbeat first
     if spectateConn then
         spectateConn:Disconnect()
         spectateConn = nil
     end
     spectateTarget = nil
-
-    -- Always restore camera to local humanoid
-    local hum = getHumanoid()
-    Camera.CameraType = Enum.CameraType.Custom
-    if hum then
-        Camera.CameraSubject = hum
-    elseif originalCameraSubject and originalCameraSubject.Parent then
-        Camera.CameraSubject = originalCameraSubject
-    end
     originalCameraSubject = nil
+
+    -- Retry restoring camera a few times to make sure it sticks
+    task.spawn(function()
+        for i = 1, 10 do
+            task.wait(0.1)
+            local char = getCharacter()
+            local hum = getHumanoid()
+            if char and hum then
+                Camera.CameraType = Enum.CameraType.Custom
+                Camera.CameraSubject = hum
+                -- Double check it actually changed
+                task.wait(0.05)
+                if Camera.CameraSubject == hum then
+                    break -- success
+                end
+            end
+        end
+    end)
     notify("Spectate", "Stopped spectating")
 end
 
