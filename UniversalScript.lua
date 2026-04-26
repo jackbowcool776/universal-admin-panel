@@ -311,29 +311,31 @@ local originalCameraSubject = nil
 local resetPickerCallback = nil -- set after player picker is created
 
 local function stopSpectate()
+    -- disconnect heartbeat first
     if spectateConn then
         spectateConn:Disconnect()
         spectateConn = nil
     end
-    Camera.CameraType = Enum.CameraType.Custom
-    if originalCameraSubject then
-        Camera.CameraSubject = originalCameraSubject
-        originalCameraSubject = nil
-    else
-        local hum = getHumanoid()
-        if hum then Camera.CameraSubject = hum end
-    end
     spectateTarget = nil
+
+    -- Always restore camera to local humanoid
+    local hum = getHumanoid()
+    Camera.CameraType = Enum.CameraType.Custom
+    if hum then
+        Camera.CameraSubject = hum
+    elseif originalCameraSubject and originalCameraSubject.Parent then
+        Camera.CameraSubject = originalCameraSubject
+    end
+    originalCameraSubject = nil
     notify("Spectate", "Stopped spectating")
 end
 
--- Stop spectating and clear picker when a player leaves
+-- Instantly stop spectating when target leaves
 Players.PlayerRemoving:Connect(function(leavingPlayer)
     if spectateTarget and spectateTarget == leavingPlayer then
+        notify("Spectate", leavingPlayer.DisplayName.." left — returning to your character")
         stopSpectate()
-        notify("Spectate", leavingPlayer.DisplayName.." left the game")
     end
-    -- Reset picker if the selected player left
     if resetPickerCallback then
         resetPickerCallback(leavingPlayer.Name)
     end
@@ -371,20 +373,16 @@ local function spectatePlayer(name)
 
     attachCamera()
 
-    -- Keep re-attaching if their character respawns
+    -- Re-attach camera if subject gets lost (e.g. target respawns)
     spectateConn = RunService.Heartbeat:Connect(function()
-        if not target or not target.Parent then
-            stopSpectate()
-            return
-        end
-        -- Re-attach if camera subject got lost
+        if not spectateTarget then return end
         if Camera.CameraSubject == nil or
-           (Camera.CameraSubject and Camera.CameraSubject.Parent == nil) then
+           (Camera.CameraSubject and not Camera.CameraSubject.Parent) then
             attachCamera()
         end
     end)
 
-    -- Also re-attach when target respawns
+    -- Re-attach when target respawns
     target.CharacterAdded:Connect(function()
         if spectateTarget == target then
             task.wait(0.5)
