@@ -1303,7 +1303,7 @@ end
 -- MOVE TAB
 local moveContent = newTab("🏃 Move")
 makeSection(moveContent, "Walk Speed")
-makeInput(moveContent, "Walk Speed", 50, function(v)
+local walkSpeedBox = makeInput(moveContent, "Walk Speed", 50, function(v)
     SpeedValue = v
     if States.Speed then local h = getHumanoid() if h then h.WalkSpeed = v end end
 end, 1)
@@ -1517,7 +1517,7 @@ local cmdsContent = newTab("💬 Cmds")
 makeSection(cmdsContent, "Click to copy")
 
 local cmdList = {
-    {"!speed",           "Toggle speed hack"},
+    {"!speed [num]",     "Set speed e.g. !speed 100"},
     {"!jump",            "Toggle infinite jump"},
     {"!afk",             "Toggle anti-AFK"},
     {"!bright",          "Toggle fullbright"},
@@ -1601,7 +1601,28 @@ LocalPlayer.Chatted:Connect(function(msg)
         FlyWin.Visible = true
         FlyWin.Parent = gui -- re-parent to bring to front
         toggleFly()
-    elseif cmd == "!speed" then toggleSpeed()
+    elseif cmd == "!speed" then
+        local val = tonumber(args[2])
+        if val and val >= 1 then
+            SpeedValue = val
+            -- Update walk speed box display
+            if walkSpeedBox then
+                local displayStr = val == math.floor(val) and string.format("%.0f", val) or tostring(val)
+                walkSpeedBox.Text = displayStr
+            end
+            -- Turn on speed if not already on
+            if not States.Speed then
+                toggleSpeed()
+                if switchRefs["Speed"] then switchRefs["Speed"](true) end
+            else
+                -- Already on, just update the walk speed
+                local h = getHumanoid()
+                if h then h.WalkSpeed = val end
+            end
+            notify("Speed", "Set to "..val.." — ON")
+        else
+            notify("Speed", "Usage: !speed [number] e.g. !speed 100")
+        end
     elseif cmd == "!jump" then toggleInfiniteJump()
     elseif cmd == "!afk" then toggleAntiAFK()
     elseif cmd == "!bright" then toggleFullbright()
