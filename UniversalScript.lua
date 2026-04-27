@@ -1426,6 +1426,113 @@ makeSection(moveContent, "Other")
 makeToggle(moveContent, "Noclip", toggleNoclip, "Noclip")
 makeToggle(moveContent, "Anti-AFK", toggleAntiAFK, "AntiAFK")
 
+-- Click to Teleport
+local clickTpKeybind = nil
+local clickTpKeybindDisplays = {}
+
+local function makeClickTpRow(parent)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1,0,0,50)
+    row.BackgroundColor3 = COLORS.row
+    row.BorderSizePixel = 0
+    row.Parent = parent
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0,8)
+
+    local titleLbl = Instance.new("TextLabel")
+    titleLbl.Size = UDim2.new(1,-10,0,18)
+    titleLbl.Position = UDim2.new(0,10,0,4)
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.TextColor3 = COLORS.subtext
+    titleLbl.Font = Enum.Font.Gotham
+    titleLbl.TextSize = 11
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    titleLbl.Text = "Click-to-TP Keybind — click box then press a key:"
+    titleLbl.Parent = row
+
+    local display = Instance.new("TextButton")
+    display.Size = UDim2.new(1,-20,0,24)
+    display.Position = UDim2.new(0,10,0,22)
+    display.BackgroundColor3 = COLORS.input
+    display.TextColor3 = COLORS.text
+    display.Font = Enum.Font.GothamBold
+    display.TextSize = 13
+    display.Text = clickTpKeybind or "None"
+    display.BorderSizePixel = 0
+    display.Parent = row
+    Instance.new("UICorner", display).CornerRadius = UDim.new(0,5)
+
+    table.insert(clickTpKeybindDisplays, display)
+
+    local function syncDisplays()
+        local txt = clickTpKeybind or "None"
+        for _, d in ipairs(clickTpKeybindDisplays) do
+            d.Text = txt
+            d.TextColor3 = COLORS.text
+        end
+    end
+
+    local waiting = false
+    display.MouseButton1Click:Connect(function()
+        if waiting then return end
+        waiting = true
+        for _, d in ipairs(clickTpKeybindDisplays) do
+            d.Text = "Press a key..."
+            d.TextColor3 = Color3.fromRGB(255,200,50)
+        end
+        local conn
+        conn = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+            local keyName = input.KeyCode.Name
+            if keyName == "Unknown" or keyName == "Return" then return end
+            if keyName == "Escape" then
+                clickTpKeybind = nil
+                notify("Click-TP Keybind", "Cleared")
+            else
+                clickTpKeybind = keyName
+                notify("Click-TP Keybind", "Set to: "..keyName.." — aim and press to teleport!")
+            end
+            waiting = false
+            conn:Disconnect()
+            syncDisplays()
+        end)
+    end)
+
+    return row
+end
+
+makeSection(moveContent, "Click to Teleport")
+makeClickTpRow(moveContent)
+
+-- Listen for click-to-tp keybind
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if not clickTpKeybind then return end
+    if input.KeyCode.Name ~= clickTpKeybind then return end
+
+    -- Raycast from mouse position into world
+    local root = getRootPart()
+    if not root then return end
+
+    local unitRay = Camera:ScreenPointToRay(
+        UserInputService:GetMouseLocation().X,
+        UserInputService:GetMouseLocation().Y
+    )
+
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {getCharacter()}
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 5000, raycastParams)
+
+    if result then
+        -- Teleport just above the hit position
+        root.CFrame = CFrame.new(result.Position + Vector3.new(0, 3, 0))
+        notify("Teleport", "Teleported!")
+    else
+        notify("Teleport", "No surface found — aim at a surface")
+    end
+end)
+
 -- WORLD TAB
 local worldContent = newTab("🌍 World")
 makeSection(worldContent, "Visuals")
