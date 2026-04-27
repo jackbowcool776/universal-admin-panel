@@ -1517,18 +1517,19 @@ local cmdsContent = newTab("💬 Cmds")
 makeSection(cmdsContent, "Click to copy")
 
 local cmdList = {
-    {"!speed",       "Toggle speed hack"},
-    {"!jump",        "Toggle infinite jump"},
-    {"!afk",         "Toggle anti-AFK"},
-    {"!bright",      "Toggle fullbright"},
-    {"!esp",         "Toggle ESP"},
-    {"!noclip",      "Turn noclip ON"},
-    {"!unnoclip",    "Turn noclip OFF"},
-    {"!rejoin",      "Rejoin same server"},
-    {"!hop",         "Server hop to new server"},
-    {"!reset",       "Reset your character"},
-    {"!to [name]",   "Teleport by display name"},
-    {"!spec [name]", "Spectate a player"},
+    {"!speed",           "Toggle speed hack"},
+    {"!jump",            "Toggle infinite jump"},
+    {"!afk",             "Toggle anti-AFK"},
+    {"!bright",          "Toggle fullbright"},
+    {"!esp",             "Toggle ESP"},
+    {"!noclip",          "Turn noclip ON"},
+    {"!unnoclip",        "Turn noclip OFF"},
+    {"!rejoin",          "Rejoin same server"},
+    {"!hop",             "Server hop to new server"},
+    {"!reset",           "Reset your character"},
+    {"!to [name]",       "Teleport by display name"},
+    {"!spectate [name]", "Spectate a player"},
+    {"!unspectate",      "Stop spectating"},
 }
 
 for _, c in pairs(cmdList) do
@@ -1619,6 +1620,44 @@ LocalPlayer.Chatted:Connect(function(msg)
     elseif cmd == "!reset" then resetCharacter()
     elseif cmd == "!hop" then serverHop()
     elseif cmd == "!to" and args[2] then teleportToPlayer(args[2])
+    elseif cmd == "!spectate" and args[2] then
+        if spectateConn then
+            stopSpectate()
+            updateSpectateBtn(false)
+        else
+            -- search by partial display name or username like !to
+            local query = string.lower(args[2])
+            local matches = {}
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer then
+                    local displayLower = string.lower(p.DisplayName)
+                    local userLower = string.lower(p.Name)
+                    if string.sub(displayLower, 1, #query) == query
+                    or string.sub(userLower, 1, #query) == query then
+                        local already = false
+                        for _, m in ipairs(matches) do
+                            if m == p then already = true break end
+                        end
+                        if not already then table.insert(matches, p) end
+                    end
+                end
+            end
+            if #matches == 0 then
+                notify("Spectate", "No player found matching '"..args[2].."'")
+            elseif #matches > 1 then
+                notify("Spectate", "Be more specific! ("..#matches.." players match)")
+            else
+                spectatePlayer(matches[1].Name)
+                updateSpectateBtn(true)
+            end
+        end
+    elseif cmd == "!unspectate" then
+        if spectateConn then
+            stopSpectate()
+            updateSpectateBtn(false)
+        else
+            notify("Spectate", "Not currently spectating anyone")
+        end
     elseif cmd == "!spec" and args[2] then
         if spectateConn then stopSpectate()
         else spectatePlayer(args[2]) end
