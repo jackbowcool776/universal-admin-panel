@@ -1506,16 +1506,15 @@ makeClickTpRow(moveContent)
 -- Freeze on teleport toggle and duration
 local freezeOnTp = false
 local freezeDuration = 2
-local freezeInput = nil
 
-local _, _, freezeRowRef = makeToggle(moveContent, "Freeze on Teleport", function()
-    freezeOnTp = not freezeOnTp
+States.FreezeOnTp = false
+makeToggle(moveContent, "Freeze on Teleport", function()
+    States.FreezeOnTp = not States.FreezeOnTp
+    freezeOnTp = States.FreezeOnTp
     notify("Freeze on TP", freezeOnTp and "ON" or "OFF")
 end, "FreezeOnTp")
 
-States.FreezeOnTp = false
-
-freezeInput = makeInput(moveContent, "Freeze Duration (1-5 sec)", 2, function(v)
+makeInput(moveContent, "Freeze Duration (1-5 sec)", 2, function(v)
     freezeDuration = v
 end, 1, 5)
 
@@ -1529,6 +1528,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     local root = getRootPart()
     if not root then return end
 
+    -- In third person the camera origin is behind the character
+    -- Use the camera's position as ray origin but aim from center of screen
+    -- to get accurate world position regardless of camera distance
     local mousePos = UserInputService:GetMouseLocation()
     local unitRay = Camera:ScreenPointToRay(mousePos.X, mousePos.Y)
 
@@ -1540,17 +1542,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
     local teleportPos
     if result then
-        -- Place exactly at the hit point, offset along normal just enough to not clip
         teleportPos = result.Position + (result.Normal * 2.5)
     else
-        -- Pointing at sky - go far along the ray
         teleportPos = unitRay.Origin + unitRay.Direction * 2000
     end
 
-    -- Keep character's current facing direction, just move position
-    local currentLook = root.CFrame.LookVector
-    root.CFrame = CFrame.new(teleportPos, teleportPos + currentLook)
-    -- Zero out velocity so gravity doesn't immediately pull down
+    -- Set position and immediately kill velocity
+    root.CFrame = CFrame.new(teleportPos, teleportPos + root.CFrame.LookVector)
     pcall(function()
         root.AssemblyLinearVelocity = Vector3.zero
         root.AssemblyAngularVelocity = Vector3.zero
@@ -1558,7 +1556,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
     notify("Teleport", "Teleported!")
 
-    -- Freeze if enabled
     if freezeOnTp then
         local hum = getHumanoid()
         if hum then
@@ -1571,18 +1568,19 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             hum.JumpPower = 0
             pcall(function() hum.JumpHeight = 0 end)
 
-            -- Small wait so position is set before BodyPosition locks it
             task.wait(0.05)
-            local bp = Instance.new("BodyPosition")
-            bp.Name = "FreezePos"
-            bp.Position = root.Position
-            bp.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-            bp.P = 1e4
-            bp.D = 1e3
-            bp.Parent = root
-            freezeBodyPos = bp
-
-            root.AssemblyLinearVelocity = Vector3.zero
+            local currentRoot = getRootPart()
+            if currentRoot then
+                local bp = Instance.new("BodyPosition")
+                bp.Name = "FreezePos"
+                bp.Position = currentRoot.Position
+                bp.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+                bp.P = 1e4
+                bp.D = 1e3
+                bp.Parent = currentRoot
+                freezeBodyPos = bp
+                currentRoot.AssemblyLinearVelocity = Vector3.zero
+            end
 
             notify("Frozen", "Frozen in air for "..freezeDuration.."s")
 
