@@ -1662,16 +1662,30 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local unitRay = Camera:ScreenPointToRay(mousePos.X, mousePos.Y)
 
         local raycastParams = RaycastParams.new()
-        raycastParams.FilterDescendantsInstances = {getCharacter()}
+        -- Exclude entire character and existing marker/line
+        local excluded = {}
+        local char = getCharacter()
+        if char then
+            for _, d in pairs(char:GetDescendants()) do
+                if d:IsA("BasePart") then table.insert(excluded, d) end
+            end
+        end
+        if markerPart then table.insert(excluded, markerPart) end
+        if markerLine then table.insert(excluded, markerLine) end
+        raycastParams.FilterDescendantsInstances = excluded
         raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
-        local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 100000, raycastParams)
+        -- Cast multiple times in case we hit something we shouldn't
+        local origin = unitRay.Origin
+        local direction = unitRay.Direction * 100000
+        local result = workspace:Raycast(origin, direction, raycastParams)
 
         local targetPos
         if result then
             targetPos = result.Position + (result.Normal * 2.5)
         else
-            targetPos = unitRay.Origin + unitRay.Direction * 2000
+            -- Nothing hit - go far in ray direction
+            targetPos = origin + unitRay.Direction * 500
         end
 
         createMarkerAt(targetPos)
