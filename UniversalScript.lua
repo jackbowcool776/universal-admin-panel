@@ -1578,6 +1578,7 @@ local function createMarkerAt(pos)
         end
         local root = getRootPart()
         if not root then return end
+        -- Start line from character's root position
         local startPos = root.Position
         local endPos = mp.Position
         local dist = (endPos - startPos).Magnitude
@@ -1661,32 +1662,33 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local mousePos = UserInputService:GetMouseLocation()
         local unitRay = Camera:ScreenPointToRay(mousePos.X, mousePos.Y)
 
-        local raycastParams = RaycastParams.new()
-        -- Exclude all character parts individually
+        -- Build full exclude list: every single descendant of character
         local excluded = {}
         local char = getCharacter()
         if char then
-            for _, d in pairs(char:GetDescendants()) do
-                if d:IsA("BasePart") then table.insert(excluded, d) end
-            end
-            -- Also add the character model itself
+            -- Add the model and ALL descendants regardless of class
             table.insert(excluded, char)
+            for _, d in pairs(char:GetDescendants()) do
+                table.insert(excluded, d)
+            end
         end
+        -- Also exclude camera, marker, line
+        table.insert(excluded, Camera)
         if markerPart then table.insert(excluded, markerPart) end
         if markerLine then table.insert(excluded, markerLine) end
+
+        local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = excluded
         raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+        raycastParams.IgnoreWater = true
 
-        -- Start ray slightly forward from camera to skip near-plane hits
-        local rayOrigin = unitRay.Origin + unitRay.Direction * 1.5
-        local rayDirection = unitRay.Direction * 100000
-
-        local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+        -- Start ray from camera position + small offset forward
+        -- This ensures we start past any near-clip issues
+        local rayOrigin = Camera.CFrame.Position + unitRay.Direction * 0.5
+        local result = workspace:Raycast(rayOrigin, unitRay.Direction * 100000, raycastParams)
 
         local targetPos
         if result then
-            -- Use the exact hit position offset along normal
-            -- For walls the normal is horizontal, for floor it's up, for ceiling it's down
             targetPos = result.Position + (result.Normal * 2.5)
         else
             targetPos = rayOrigin + unitRay.Direction * 500
