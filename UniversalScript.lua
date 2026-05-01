@@ -1666,25 +1666,27 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         end
     else
         -- First press — place marker
-        local mousePos = UserInputService:GetMouseLocation()
-        local unitRay = Camera:ScreenPointToRay(mousePos.X, mousePos.Y)
+        -- Use LocalPlayer mouse which is more accurate in third person
+        local mouse = LocalPlayer:GetMouse()
 
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = {getCharacter()}
         raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
-        -- Start the ray 10 studs in front of the camera
-        -- This guarantees we skip past the character entirely since
-        -- characters are max ~6 studs wide
-        local rayOrigin = Camera.CFrame.Position + unitRay.Direction * 10
-        local result = workspace:Raycast(rayOrigin, unitRay.Direction * 100000, raycastParams)
+        -- mouse.UnitRay is the most accurate ray in third person
+        local mouseOrigin = mouse.UnitRay.Origin
+        local mouseDir = mouse.UnitRay.Direction
+
+        -- Start 10 studs forward to skip past character
+        local rayOrigin = mouseOrigin + mouseDir * 10
+        local result = workspace:Raycast(rayOrigin, mouseDir * 100000, raycastParams)
 
         local targetPos
         if result then
-            -- Sit the marker right on the surface with just a tiny offset so it doesn't clip
             targetPos = result.Position + (result.Normal * 0.1)
         else
-            targetPos = rayOrigin + unitRay.Direction * 500
+            -- Fallback to mouse.Hit which Roblox calculates automatically
+            targetPos = mouse.Hit.Position
         end
 
         createMarkerAt(targetPos)
