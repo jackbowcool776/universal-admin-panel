@@ -1,7 +1,7 @@
 -- Universal Script by Claude
 -- Main hub + separate Fly System window
 
-if not game:IsLoaded() then game.Loaded:Wait() end
+task.wait(3)
 
 -- =====================
 -- WHITELIST CONFIG
