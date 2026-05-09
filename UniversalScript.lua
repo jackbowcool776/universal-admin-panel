@@ -167,6 +167,12 @@ end
 local success, err = pcall(function()
 
 
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+
 local Camera = workspace.CurrentCamera
 
 local function getCharacter() return LocalPlayer.Character end
