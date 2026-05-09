@@ -197,8 +197,11 @@ local switchRefs = {}
 
 local SpeedValue = 50
 local FlySpeed = 50
-local JumpPowerValue = 50
+-- Default Roblox JumpHeight is 7.2 — store the actual current value
 local OriginalWalkSpeed = getHumanoid().WalkSpeed
+local OriginalJumpHeight = getHumanoid().JumpHeight
+local OriginalJumpPower = getHumanoid().JumpPower
+local JumpPowerValue = OriginalJumpHeight -- use actual default, not hardcoded 50
 local OriginalAmbient = Lighting.Ambient
 local OriginalBrightness = Lighting.Brightness
 local FlyConnection, NoclipConnection, AntiAFKConnection = nil, nil, nil
@@ -1799,8 +1802,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 local h = getHumanoid()
                 if h then
                     h.WalkSpeed = States.Speed and SpeedValue or OriginalWalkSpeed
-                    h.JumpPower = JumpPowerValue or 50
-                    pcall(function() h.JumpHeight = JumpPowerValue or 50 end)
+                    h.JumpPower = JumpPowerValue or OriginalJumpPower
+                    pcall(function() h.JumpHeight = JumpPowerValue or OriginalJumpHeight end)
                 end
                 notify("Frozen", "Unfrozen!")
             end)
@@ -1899,21 +1902,22 @@ local cmdsContent = newTab("💬 Cmds")
 makeSection(cmdsContent, "Click to copy")
 
 local cmdList = {
-    {"!speed [num]",     "Set speed e.g. !speed 100"},
-    {"!thirdp",          "Force third person"},
-    {"!firstp",          "Lock first person"},
-    {"!jump",            "Toggle infinite jump"},
-    {"!afk",             "Toggle anti-AFK"},
-    {"!bright",          "Toggle fullbright"},
-    {"!esp",             "Toggle ESP"},
-    {"!noclip",          "Turn noclip ON"},
-    {"!unnoclip",        "Turn noclip OFF"},
-    {"!rejoin",          "Rejoin same server"},
-    {"!hop",             "Server hop to new server"},
-    {"!reset",           "Reset your character"},
-    {"!to [name]",       "Teleport by display name"},
-    {"!spectate [name]", "Spectate a player"},
-    {"!unspectate",      "Stop spectating"},
+    {"!speed set [num]",    "Set speed e.g. !speed set 100"},
+    {"!jumppower set [num]","Set jump power e.g. !jumppower set 20"},
+    {"!infjump",            "Toggle infinite jump"},
+    {"!thirdp",             "Force third person"},
+    {"!firstp",             "Lock first person"},
+    {"!afk",                "Toggle anti-AFK"},
+    {"!bright",             "Toggle fullbright"},
+    {"!esp",                "Toggle ESP"},
+    {"!noclip",             "Turn noclip ON"},
+    {"!unnoclip",           "Turn noclip OFF"},
+    {"!rejoin",             "Rejoin same server"},
+    {"!serverhop",          "Server hop to new server"},
+    {"!reset",              "Reset your character"},
+    {"!to [name]",          "Teleport by display name"},
+    {"!spectate [name]",    "Spectate a player"},
+    {"!unspectate",         "Stop spectating"},
 }
 
 for _, c in pairs(cmdList) do
@@ -2226,28 +2230,42 @@ LocalPlayer.Chatted:Connect(function(msg)
         FlyWin.Parent = gui -- re-parent to bring to front
         toggleFly()
     elseif cmd == "!speed" then
-        local val = tonumber(args[2])
-        if val and val >= 1 then
-            SpeedValue = val
-            -- Update walk speed box display
-            if walkSpeedBox then
-                local displayStr = val == math.floor(val) and string.format("%.0f", val) or tostring(val)
-                walkSpeedBox.Text = displayStr
+        if args[2] == "set" and tonumber(args[3]) then
+            local val = tonumber(args[3])
+            if val >= 1 then
+                SpeedValue = val
+                if walkSpeedBox then
+                    local displayStr = val == math.floor(val) and string.format("%.0f", val) or tostring(val)
+                    walkSpeedBox.Text = displayStr
+                end
+                if not States.Speed then
+                    toggleSpeed()
+                    if switchRefs["Speed"] then switchRefs["Speed"](true) end
+                else
+                    local h = getHumanoid()
+                    if h then h.WalkSpeed = val end
+                end
+                notify("Speed", "Set to "..val.." — ON")
             end
-            -- Turn on speed if not already on
-            if not States.Speed then
-                toggleSpeed()
-                if switchRefs["Speed"] then switchRefs["Speed"](true) end
-            else
-                -- Already on, just update the walk speed
-                local h = getHumanoid()
-                if h then h.WalkSpeed = val end
-            end
-            notify("Speed", "Set to "..val.." — ON")
         else
-            notify("Speed", "Usage: !speed [number] e.g. !speed 100")
+            notify("Speed", "Usage: !speed set [number] e.g. !speed set 100")
         end
-    elseif cmd == "!jump" then toggleInfiniteJump()
+    elseif cmd == "!jumppower" then
+        if args[2] == "set" and tonumber(args[3]) then
+            local val = tonumber(args[3])
+            if val >= 1 then
+                JumpPowerValue = val
+                local h = getHumanoid()
+                if h then
+                    h.JumpPower = val
+                    pcall(function() h.JumpHeight = val end)
+                end
+                notify("Jump Power", "Set to "..val)
+            end
+        else
+            notify("Jump Power", "Usage: !jumppower set [number] e.g. !jumppower set 20")
+        end
+    elseif cmd == "!infjump" then toggleInfiniteJump()
     elseif cmd == "!afk" then toggleAntiAFK()
     elseif cmd == "!bright" then toggleFullbright()
     elseif cmd == "!esp" then toggleESP()
@@ -2265,7 +2283,7 @@ LocalPlayer.Chatted:Connect(function(msg)
     elseif cmd == "!firstp" then setFirstPerson()
     elseif cmd == "!rejoin" then rejoin()
     elseif cmd == "!reset" then resetCharacter()
-    elseif cmd == "!hop" then serverHop()
+    elseif cmd == "!serverhop" then serverHop()
     elseif cmd == "!to" and args[2] then teleportToPlayer(args[2])
     elseif cmd == "!spectate" and args[2] then
         if spectateConn then
