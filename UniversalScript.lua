@@ -224,6 +224,75 @@ local updateFlyWindow = nil
 local moveTabFlyBox = nil
 
 -- =====================
+-- GOD MODE
+-- Blocks damage remotes and keeps health maxed
+-- Works on games that use client-side damage remotes
+-- =====================
+local godModeOn = false
+local godModeConn = nil
+local godModeHook = nil
+local originalNamecall = nil
+
+local function enableGodMode()
+    godModeOn = true
+
+    -- Method 1: Keep health maxed every frame
+    godModeConn = RunService.Heartbeat:Connect(function()
+        if not godModeOn then
+            godModeConn:Disconnect()
+            godModeConn = nil
+            return
+        end
+        local hum = getHumanoid()
+        if hum then
+            if hum.Health < hum.MaxHealth then
+                hum.Health = hum.MaxHealth
+            end
+        end
+    end)
+
+    -- Method 2: Block damage remotes via metatable hook
+    pcall(function()
+        local mt = getrawmetatable(game)
+        originalNamecall = mt.__namecall
+        setreadonly(mt, false)
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if method == "FireServer" or method == "InvokeServer" then
+                local name = self.Name:lower()
+                -- Block any remote that looks like it deals damage
+                if name:find("damage") or name:find("hurt") or name:find("kill")
+                or name:find("hit") or name:find("dead") or name:find("death") then
+                    return -- block it
+                end
+            end
+            return originalNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+    end)
+
+    notify("God Mode", "ON — blocking damage!")
+end
+
+local function disableGodMode()
+    godModeOn = false
+    if godModeConn then godModeConn:Disconnect() godModeConn = nil end
+
+    -- Restore original namecall
+    pcall(function()
+        if originalNamecall then
+            local mt = getrawmetatable(game)
+            setreadonly(mt, false)
+            mt.__namecall = originalNamecall
+            setreadonly(mt, true)
+            originalNamecall = nil
+        end
+    end)
+
+    notify("God Mode", "OFF")
+end
+
+-- =====================
 -- FEATURES
 -- =====================
 
@@ -1844,7 +1913,12 @@ local playerContent = newTab("👤 Player")
 makeSection(playerContent, "Select a Player")
 local _, getTarget, resetPicker = makePlayerPicker(playerContent)
 resetPickerCallback = resetPicker
-makeSection(playerContent, "Actions")
+makeSection(playerContent, "Protection")
+States.GodMode = false
+makeToggle(playerContent, "🛡️ God Mode", function()
+    States.GodMode = not States.GodMode
+    if States.GodMode then enableGodMode() else disableGodMode() end
+end, "GodMode")
 makeButton(playerContent, "🚀 Teleport to Player", function()
     local t = getTarget()
     if t then teleportToPlayer(t) else notify("Teleport","Pick a player first!") end
@@ -1902,6 +1976,7 @@ local cmdsContent = newTab("💬 Cmds")
 makeSection(cmdsContent, "Click to copy")
 
 local cmdList = {
+    {"!god",                "Toggle god mode"},
     {"!speed set [num]",    "Set speed e.g. !speed set 100"},
     {"!jumppower set [num]","Set jump power e.g. !jumppower set 20"},
     {"!infjump",            "Toggle infinite jump"},
@@ -2265,8 +2340,16 @@ LocalPlayer.Chatted:Connect(function(msg)
         else
             notify("Jump Power", "Usage: !jumppower set [number] e.g. !jumppower set 20")
         end
-    elseif cmd == "!infjump" then toggleInfiniteJump()
-    elseif cmd == "!afk" then toggleAntiAFK()
+    elseif cmd == "!god" then
+        States.GodMode = not States.GodMode
+        if States.GodMode then enableGodMode() else disableGodMode() end
+        if switchRefs["GodMode"] then switchRefs["GodMode"](States.GodMode) end
+    elseif cmd == "!infjump" then
+        toggleInfiniteJump()
+        if switchRefs["InfiniteJump"] then switchRefs["InfiniteJump"](States.InfiniteJump) end
+    elseif cmd == "!afk" then
+        toggleAntiAFK()
+        if switchRefs["AntiAFK"] then switchRefs["AntiAFK"](States.AntiAFK) end
     elseif cmd == "!bright" then toggleFullbright()
     elseif cmd == "!esp" then toggleESP()
     elseif cmd == "!noclip" then
