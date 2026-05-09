@@ -1075,12 +1075,16 @@ OpenBtn.Parent = TitleBar
 Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(0, 6)
 
 
-local TabBar = Instance.new("Frame")
+local TabBar = Instance.new("ScrollingFrame")
 TabBar.Size = UDim2.new(1, 0, 0, 34)
 TabBar.Position = UDim2.new(0, 0, 0, CLOSED_HEIGHT)
 TabBar.BackgroundColor3 = COLORS.tabbar
 TabBar.BorderSizePixel = 0
 TabBar.ZIndex = 9
+TabBar.ScrollBarThickness = 0
+TabBar.ScrollingDirection = Enum.ScrollingDirection.X
+TabBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+TabBar.AutomaticCanvasSize = Enum.AutomaticSize.X
 TabBar.Parent = Main
 
 local TabLayout = Instance.new("UIListLayout")
@@ -2132,6 +2136,16 @@ if isOwner then
     addBtn.Parent = addRow
     Instance.new("UICorner", addBtn).CornerRadius = UDim.new(0,6)
 
+    -- Numbers only filter
+    addBox.Changed:Connect(function(prop)
+        if prop == "Text" then
+            local filtered = addBox.Text:gsub("[^%d]", "")
+            if filtered ~= addBox.Text then
+                addBox.Text = filtered
+            end
+        end
+    end)
+
     local function tryAddUser(text)
         local id = tonumber(text)
         if not id then
@@ -2221,25 +2235,40 @@ if isOwner then
             local pBtn = Instance.new("TextButton")
             pBtn.Size = UDim2.new(0,64,0,20)
             pBtn.Position = UDim2.new(1,-68,0.5,-10)
-            pBtn.BackgroundColor3 = alreadyIn and Color3.fromRGB(60,60,80) or COLORS.switchOn
+            pBtn.BackgroundColor3 = alreadyIn and Color3.fromRGB(180,40,40) or COLORS.switchOn
             pBtn.TextColor3 = Color3.fromRGB(255,255,255)
             pBtn.Font = Enum.Font.GothamBold
             pBtn.TextSize = 11
-            pBtn.Text = alreadyIn and "✓ Added" or "Add ✓"
+            pBtn.Text = alreadyIn and "✕ Remove" or "Add ✓"
             pBtn.BorderSizePixel = 0
             pBtn.Parent = pRow
             Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0,5)
 
-            if not alreadyIn then
-                pBtn.MouseButton1Click:Connect(function()
+            pBtn.MouseButton1Click:Connect(function()
+                -- Toggle add/remove
+                local found = false
+                for i, id in ipairs(runtimeWhitelist) do
+                    if id == p.UserId then
+                        table.remove(runtimeWhitelist, i)
+                        found = true
+                        break
+                    end
+                end
+                if found then
+                    pBtn.Text = "Add ✓"
+                    pBtn.BackgroundColor3 = COLORS.switchOn
+                    notify("Whitelist", p.DisplayName.." removed!")
+                else
                     table.insert(runtimeWhitelist, p.UserId)
-                    pBtn.Text = "✓ Added"
-                    pBtn.BackgroundColor3 = Color3.fromRGB(60,60,80)
+                    pBtn.Text = "✕ Remove"
+                    pBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
                     notify("Whitelist", p.DisplayName.." added!")
-                    rebuildWLList()
-                end)
-            end
+                end
+                rebuildWLList()
+            end)
         end
+        -- Fix canvas size for scroll
+        paScroll.CanvasSize = UDim2.new(0,0,0,paLayout.AbsoluteContentSize.Y + 12)
     end
 
     buildPlayerList()
