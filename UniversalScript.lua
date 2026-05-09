@@ -2124,6 +2124,13 @@ switchTab("🏃 Move")
 
 -- Show permission denied overlay if not owner
 if not isOwner then
+    local denyGui = Instance.new("ScreenGui")
+    denyGui.Name = "PermissionDenied"
+    denyGui.ResetOnSpawn = false
+    denyGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    denyGui.DisplayOrder = 999
+    pcall(function() denyGui.Parent = game:GetService("CoreGui") end)
+
     local denyOverlay = Instance.new("Frame")
     denyOverlay.Size = UDim2.new(0, 320, 0, 180)
     denyOverlay.Position = UDim2.new(0.5, -160, 0.5, -90)
@@ -2131,7 +2138,7 @@ if not isOwner then
     denyOverlay.BackgroundTransparency = 0
     denyOverlay.BorderSizePixel = 0
     denyOverlay.ZIndex = 200
-    denyOverlay.Parent = gui
+    denyOverlay.Parent = denyGui
     Instance.new("UICorner", denyOverlay).CornerRadius = UDim.new(0, 14)
 
     local lockIcon = Instance.new("TextLabel")
@@ -2170,6 +2177,9 @@ if not isOwner then
     denyId.ZIndex = 201
     denyId.Parent = denyOverlay
     Instance.new("UICorner", denyId).CornerRadius = UDim.new(0, 6)
+
+    -- Also hide the main script GUI
+    gui.Enabled = false
 end
 
 print("[Universal Script] Loaded! Press 🚀 button on the hub to show/hide Fly System.")
