@@ -2124,50 +2124,52 @@ switchTab("🏃 Move")
 
 -- Show permission denied overlay if not owner
 if not isOwner then
-    -- Overlay the entire GUI with a permission denied screen
     local denyOverlay = Instance.new("Frame")
-    denyOverlay.Size = UDim2.new(1,0,1,0)
-    denyOverlay.Position = UDim2.new(0,0,0,0)
-    denyOverlay.BackgroundColor3 = Color3.fromRGB(10,10,16)
-    denyOverlay.BackgroundTransparency = 0.05
+    denyOverlay.Size = UDim2.new(0, 320, 0, 180)
+    denyOverlay.Position = UDim2.new(0.5, -160, 0.5, -90)
+    denyOverlay.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+    denyOverlay.BackgroundTransparency = 0
     denyOverlay.BorderSizePixel = 0
     denyOverlay.ZIndex = 200
     denyOverlay.Parent = gui
-    Instance.new("UICorner", denyOverlay).CornerRadius = UDim.new(0,14)
+    Instance.new("UICorner", denyOverlay).CornerRadius = UDim.new(0, 14)
 
     local lockIcon = Instance.new("TextLabel")
-    lockIcon.Size = UDim2.new(1,0,0,60)
-    lockIcon.Position = UDim2.new(0,0,0.25,0)
+    lockIcon.Size = UDim2.new(1, 0, 0, 50)
+    lockIcon.Position = UDim2.new(0, 0, 0, 10)
     lockIcon.BackgroundTransparency = 1
-    lockIcon.TextColor3 = Color3.fromRGB(200,40,40)
+    lockIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
     lockIcon.Font = Enum.Font.GothamBlack
-    lockIcon.TextSize = 44
+    lockIcon.TextSize = 36
     lockIcon.Text = "🔒"
     lockIcon.ZIndex = 201
     lockIcon.Parent = denyOverlay
 
     local denyTitle = Instance.new("TextLabel")
-    denyTitle.Size = UDim2.new(1,-40,0,30)
-    denyTitle.Position = UDim2.new(0,20,0.42,0)
+    denyTitle.Size = UDim2.new(1, -20, 0, 40)
+    denyTitle.Position = UDim2.new(0, 10, 0, 60)
     denyTitle.BackgroundTransparency = 1
-    denyTitle.TextColor3 = Color3.fromRGB(255,255,255)
+    denyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
     denyTitle.Font = Enum.Font.GothamBlack
-    denyTitle.TextSize = 18
-    denyTitle.Text = "You do not have permission to use this script"
+    denyTitle.TextSize = 15
+    denyTitle.Text = "You do not have permission\nto use this script"
     denyTitle.TextWrapped = true
     denyTitle.ZIndex = 201
     denyTitle.Parent = denyOverlay
 
     local denyId = Instance.new("TextLabel")
-    denyId.Size = UDim2.new(1,-40,0,20)
-    denyId.Position = UDim2.new(0,20,0.62,0)
-    denyId.BackgroundTransparency = 1
-    denyId.TextColor3 = Color3.fromRGB(120,120,150)
-    denyId.Font = Enum.Font.Gotham
-    denyId.TextSize = 12
+    denyId.Size = UDim2.new(1, -20, 0, 30)
+    denyId.Position = UDim2.new(0, 10, 0, 138)
+    denyId.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    denyId.BackgroundTransparency = 0
+    denyId.TextColor3 = Color3.fromRGB(255, 255, 255)
+    denyId.Font = Enum.Font.GothamBold
+    denyId.TextSize = 15
     denyId.Text = "Your UserId: "..tostring(LocalPlayer.UserId)
+    denyId.BorderSizePixel = 0
     denyId.ZIndex = 201
     denyId.Parent = denyOverlay
+    Instance.new("UICorner", denyId).CornerRadius = UDim.new(0, 6)
 end
 
 print("[Universal Script] Loaded! Press 🚀 button on the hub to show/hide Fly System.")
