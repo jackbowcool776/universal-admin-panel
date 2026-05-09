@@ -9,59 +9,18 @@ end)
 task.wait(0.5)
 
 -- =====================
--- WHITELIST CONFIG
--- Fill these in to enable the whitelist system
--- Leave BIN_ID as "YOUR_BIN_ID_HERE" to disable (everyone can use)
+-- OWNER ONLY ACCESS
+-- Only your UserId can use this script
 -- =====================
-local BIN_ID   = "YOUR_BIN_ID_HERE"
-local API_KEY  = "YOUR_API_KEY_HERE"
-local OWNER_ID = 0
+local OWNER_ID = 5680334775  -- jackbowcool776
 
 local Players     = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 
-local liveWhitelist = {}
-local whitelistEnabled = (BIN_ID ~= "YOUR_BIN_ID_HERE" and OWNER_ID ~= 0)
-
-local BIN_URL = "https://api.jsonbin.io/v3/b/"..BIN_ID
-local HEADERS = {
-    ["X-Master-Key"] = API_KEY,
-    ["Content-Type"]  = "application/json",
-}
-
-local function fetchWhitelist()
-    if not whitelistEnabled then return end
-    pcall(function()
-        local res = game:HttpGet(BIN_URL.."/latest")
-        local data = HttpService:JSONDecode(res)
-        if data and data.record and data.record.whitelist then
-            liveWhitelist = data.record.whitelist
-        end
-    end)
-end
-
-local function saveWhitelist()
-    if not whitelistEnabled then return end
-    pcall(function()
-        local body = HttpService:JSONEncode({whitelist = liveWhitelist})
-        local reqFunc = (typeof(request)=="function" and request)
-                     or (syn and syn.request)
-                     or (http and http.request)
-        if reqFunc then
-            reqFunc({Url=BIN_URL, Method="PUT", Headers=HEADERS, Body=body})
-        end
-    end)
-end
-
 local function isWhitelisted(userId)
-    if not whitelistEnabled then return true end
-    if userId == OWNER_ID then return true end
-    for _, id in ipairs(liveWhitelist) do
-        if id == userId then return true end
-    end
-    return false
+    return userId == OWNER_ID
 end
 
 local function showAccessDenied()
@@ -148,20 +107,9 @@ local function showAccessDenied()
     closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 end
 
--- Only fetch if whitelist is enabled
-if whitelistEnabled then
-    fetchWhitelist()
-    if not isWhitelisted(LocalPlayer.UserId) then
-        showAccessDenied()
-        return
-    end
-end
-
--- Check access
-if not isWhitelisted(LocalPlayer.UserId) then
-    showAccessDenied()
-    return
-end
+-- Only the owner can use this script
+-- Others can open it but see a permission denied screen
+local isOwner = isWhitelisted(LocalPlayer.UserId)
 
 -- Access granted
 local success, err = pcall(function()
@@ -1799,6 +1747,13 @@ makeInput(moveContent, "Freeze Duration (1-5 sec)", 2, function(v)
     freezeDuration = v
 end, 1, 5)
 
+makeSection(moveContent, "Protection")
+States.GodMode = false
+makeToggle(moveContent, "🛡️ God Mode", function()
+    States.GodMode = not States.GodMode
+    if States.GodMode then enableGodMode() else disableGodMode() end
+end, "GodMode")
+
 -- Listen for click-to-tp keybind
 local freezeBodyPos = nil
 
@@ -1913,12 +1868,6 @@ local playerContent = newTab("👤 Player")
 makeSection(playerContent, "Select a Player")
 local _, getTarget, resetPicker = makePlayerPicker(playerContent)
 resetPickerCallback = resetPicker
-makeSection(playerContent, "Protection")
-States.GodMode = false
-makeToggle(playerContent, "🛡️ God Mode", function()
-    States.GodMode = not States.GodMode
-    if States.GodMode then enableGodMode() else disableGodMode() end
-end, "GodMode")
 makeButton(playerContent, "🚀 Teleport to Player", function()
     local t = getTarget()
     if t then teleportToPlayer(t) else notify("Teleport","Pick a player first!") end
@@ -2054,247 +2003,6 @@ for _, c in pairs(cmdList) do
     end)
 end
 
--- =====================
--- WHITELIST MANAGER TAB (owner only)
--- =====================
-if LocalPlayer.UserId == OWNER_ID then
-    local wlContent = newTab("🔒 WL")
-    makeSection(wlContent, "Whitelist Manager")
-
-    local infoLbl = Instance.new("TextLabel")
-    infoLbl.Size = UDim2.new(1,0,0,18)
-    infoLbl.BackgroundTransparency = 1
-    infoLbl.TextColor3 = COLORS.subtext
-    infoLbl.Font = Enum.Font.Gotham
-    infoLbl.TextSize = 11
-    infoLbl.TextXAlignment = Enum.TextXAlignment.Left
-    infoLbl.Text = "Your ID: "..tostring(LocalPlayer.UserId).." — changes save instantly"
-    infoLbl.Parent = wlContent
-
-    makeSection(wlContent, "Current Whitelist")
-
-    local wlScroll = Instance.new("ScrollingFrame")
-    wlScroll.Size = UDim2.new(1,0,0,110)
-    wlScroll.BackgroundColor3 = COLORS.row
-    wlScroll.BorderSizePixel = 0
-    wlScroll.ScrollBarThickness = 3
-    wlScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
-    wlScroll.CanvasSize = UDim2.new(0,0,0,0)
-    wlScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    wlScroll.Parent = wlContent
-    Instance.new("UICorner", wlScroll).CornerRadius = UDim.new(0,8)
-
-    local wlLayout = Instance.new("UIListLayout")
-    wlLayout.Padding = UDim.new(0,4)
-    wlLayout.Parent = wlScroll
-
-    local wlPad = Instance.new("UIPadding")
-    wlPad.PaddingTop = UDim.new(0,6)
-    wlPad.PaddingLeft = UDim.new(0,8)
-    wlPad.PaddingRight = UDim.new(0,8)
-    wlPad.PaddingBottom = UDim.new(0,6)
-    wlPad.Parent = wlScroll
-
-    local function rebuildWLList()
-        for _, c in pairs(wlScroll:GetChildren()) do
-            if c:IsA("Frame") then c:Destroy() end
-        end
-        if #liveWhitelist == 0 then
-            local empty = Instance.new("TextLabel")
-            empty.Size = UDim2.new(1,0,0,24)
-            empty.BackgroundTransparency = 1
-            empty.TextColor3 = COLORS.subtext
-            empty.Font = Enum.Font.Gotham
-            empty.TextSize = 12
-            empty.Text = "No users whitelisted yet"
-            empty.Parent = wlScroll
-            return
-        end
-        for i, id in ipairs(liveWhitelist) do
-            local row = Instance.new("Frame")
-            row.Size = UDim2.new(1,0,0,28)
-            row.BackgroundColor3 = COLORS.input
-            row.BorderSizePixel = 0
-            row.Parent = wlScroll
-            Instance.new("UICorner", row).CornerRadius = UDim.new(0,6)
-
-            local idLbl = Instance.new("TextLabel")
-            idLbl.Size = UDim2.new(1,-36,1,0)
-            idLbl.Position = UDim2.new(0,8,0,0)
-            idLbl.BackgroundTransparency = 1
-            idLbl.TextColor3 = COLORS.text
-            idLbl.Font = Enum.Font.Gotham
-            idLbl.TextSize = 12
-            idLbl.TextXAlignment = Enum.TextXAlignment.Left
-            idLbl.Text = tostring(id)
-            idLbl.Parent = row
-
-            local removeBtn = Instance.new("TextButton")
-            removeBtn.Size = UDim2.new(0,28,0,20)
-            removeBtn.Position = UDim2.new(1,-32,0.5,-10)
-            removeBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
-            removeBtn.TextColor3 = Color3.fromRGB(255,255,255)
-            removeBtn.Font = Enum.Font.GothamBold
-            removeBtn.TextSize = 11
-            removeBtn.Text = "✕"
-            removeBtn.BorderSizePixel = 0
-            removeBtn.Parent = row
-            Instance.new("UICorner", removeBtn).CornerRadius = UDim.new(0,5)
-
-            local idx = i
-            removeBtn.MouseButton1Click:Connect(function()
-                local removedId = liveWhitelist[idx]
-                table.remove(liveWhitelist, idx)
-                saveWhitelist()
-                notify("Whitelist", "Removed "..tostring(removedId))
-                rebuildWLList()
-            end)
-        end
-    end
-
-    rebuildWLList()
-
-    -- Add by UserId
-    makeSection(wlContent, "Add by UserId")
-
-    local addRow = Instance.new("Frame")
-    addRow.Size = UDim2.new(1,0,0,32)
-    addRow.BackgroundColor3 = COLORS.row
-    addRow.BorderSizePixel = 0
-    addRow.Parent = wlContent
-    Instance.new("UICorner", addRow).CornerRadius = UDim.new(0,8)
-
-    local addBox = Instance.new("TextBox")
-    addBox.Size = UDim2.new(1,-80,0,24)
-    addBox.Position = UDim2.new(0,4,0.5,-12)
-    addBox.BackgroundColor3 = COLORS.input
-    addBox.TextColor3 = COLORS.text
-    addBox.Font = Enum.Font.Gotham
-    addBox.TextSize = 13
-    addBox.Text = ""
-    addBox.PlaceholderText = "Enter UserId..."
-    addBox.BorderSizePixel = 0
-    addBox.Parent = addRow
-    Instance.new("UICorner", addBox).CornerRadius = UDim.new(0,6)
-
-    local addBtn = Instance.new("TextButton")
-    addBtn.Size = UDim2.new(0,68,0,24)
-    addBtn.Position = UDim2.new(1,-72,0.5,-12)
-    addBtn.BackgroundColor3 = COLORS.switchOn
-    addBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    addBtn.Font = Enum.Font.GothamBold
-    addBtn.TextSize = 12
-    addBtn.Text = "Add ✓"
-    addBtn.BorderSizePixel = 0
-    addBtn.Parent = addRow
-    Instance.new("UICorner", addBtn).CornerRadius = UDim.new(0,6)
-
-    addBtn.MouseButton1Click:Connect(function()
-        local id = tonumber(addBox.Text)
-        if not id then notify("Whitelist", "Enter a valid UserId!") return end
-        for _, existing in ipairs(liveWhitelist) do
-            if existing == id then notify("Whitelist", id.." already whitelisted!") return end
-        end
-        table.insert(liveWhitelist, id)
-        saveWhitelist()
-        addBox.Text = ""
-        notify("Whitelist", "Added "..id.." — saved!")
-        rebuildWLList()
-    end)
-
-    -- Add players in server
-    makeSection(wlContent, "Add Player in Server")
-
-    local paScroll = Instance.new("ScrollingFrame")
-    paScroll.Size = UDim2.new(1,0,0,100)
-    paScroll.BackgroundColor3 = COLORS.row
-    paScroll.BorderSizePixel = 0
-    paScroll.ScrollBarThickness = 3
-    paScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
-    paScroll.CanvasSize = UDim2.new(0,0,0,0)
-    paScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    paScroll.Parent = wlContent
-    Instance.new("UICorner", paScroll).CornerRadius = UDim.new(0,8)
-
-    local paLayout = Instance.new("UIListLayout")
-    paLayout.Padding = UDim.new(0,4)
-    paLayout.Parent = paScroll
-
-    local paPad = Instance.new("UIPadding")
-    paPad.PaddingTop = UDim.new(0,6)
-    paPad.PaddingLeft = UDim.new(0,8)
-    paPad.PaddingRight = UDim.new(0,8)
-    paPad.PaddingBottom = UDim.new(0,6)
-    paPad.Parent = paScroll
-
-    local function buildPlayerList()
-        for _, c in pairs(paScroll:GetChildren()) do
-            if c:IsA("Frame") then c:Destroy() end
-        end
-        for _, p in pairs(Players:GetPlayers()) do
-            local pRow = Instance.new("Frame")
-            pRow.Size = UDim2.new(1,0,0,28)
-            pRow.BackgroundColor3 = COLORS.input
-            pRow.BorderSizePixel = 0
-            pRow.Parent = paScroll
-            Instance.new("UICorner", pRow).CornerRadius = UDim.new(0,6)
-
-            local nameLbl = Instance.new("TextLabel")
-            nameLbl.Size = UDim2.new(1,-80,1,0)
-            nameLbl.Position = UDim2.new(0,8,0,0)
-            nameLbl.BackgroundTransparency = 1
-            nameLbl.TextColor3 = COLORS.text
-            nameLbl.Font = Enum.Font.Gotham
-            nameLbl.TextSize = 11
-            nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-            nameLbl.Text = p.DisplayName.." ("..p.UserId..")"
-            nameLbl.Parent = pRow
-
-            local alreadyIn = (p.UserId == OWNER_ID)
-            for _, id in ipairs(liveWhitelist) do
-                if id == p.UserId then alreadyIn = true break end
-            end
-
-            local pBtn = Instance.new("TextButton")
-            pBtn.Size = UDim2.new(0,64,0,20)
-            pBtn.Position = UDim2.new(1,-68,0.5,-10)
-            pBtn.BackgroundColor3 = alreadyIn and Color3.fromRGB(60,60,80) or COLORS.switchOn
-            pBtn.TextColor3 = Color3.fromRGB(255,255,255)
-            pBtn.Font = Enum.Font.GothamBold
-            pBtn.TextSize = 11
-            pBtn.Text = alreadyIn and "✓ Added" or "Add ✓"
-            pBtn.BorderSizePixel = 0
-            pBtn.Parent = pRow
-            Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0,5)
-
-            if not alreadyIn then
-                pBtn.MouseButton1Click:Connect(function()
-                    table.insert(liveWhitelist, p.UserId)
-                    saveWhitelist()
-                    pBtn.Text = "✓ Added"
-                    pBtn.BackgroundColor3 = Color3.fromRGB(60,60,80)
-                    notify("Whitelist", p.DisplayName.." added and saved!")
-                    rebuildWLList()
-                end)
-            end
-        end
-    end
-
-    buildPlayerList()
-
-    makeButton(wlContent, "🔄 Refresh Player List", function()
-        buildPlayerList()
-    end)
-
-    makeButton(wlContent, "🔄 Sync from Database", function()
-        fetchWhitelist()
-        rebuildWLList()
-        buildPlayerList()
-        notify("Whitelist", "Synced from database!")
-    end)
-end
-
--- =====================
 -- CHAT COMMANDS
 -- =====================
 LocalPlayer.Chatted:Connect(function(msg)
@@ -2413,6 +2121,54 @@ LocalPlayer.Chatted:Connect(function(msg)
 end)
 
 switchTab("🏃 Move")
+
+-- Show permission denied overlay if not owner
+if not isOwner then
+    -- Overlay the entire GUI with a permission denied screen
+    local denyOverlay = Instance.new("Frame")
+    denyOverlay.Size = UDim2.new(1,0,1,0)
+    denyOverlay.Position = UDim2.new(0,0,0,0)
+    denyOverlay.BackgroundColor3 = Color3.fromRGB(10,10,16)
+    denyOverlay.BackgroundTransparency = 0.05
+    denyOverlay.BorderSizePixel = 0
+    denyOverlay.ZIndex = 200
+    denyOverlay.Parent = gui
+    Instance.new("UICorner", denyOverlay).CornerRadius = UDim.new(0,14)
+
+    local lockIcon = Instance.new("TextLabel")
+    lockIcon.Size = UDim2.new(1,0,0,60)
+    lockIcon.Position = UDim2.new(0,0,0.25,0)
+    lockIcon.BackgroundTransparency = 1
+    lockIcon.TextColor3 = Color3.fromRGB(200,40,40)
+    lockIcon.Font = Enum.Font.GothamBlack
+    lockIcon.TextSize = 44
+    lockIcon.Text = "🔒"
+    lockIcon.ZIndex = 201
+    lockIcon.Parent = denyOverlay
+
+    local denyTitle = Instance.new("TextLabel")
+    denyTitle.Size = UDim2.new(1,-40,0,30)
+    denyTitle.Position = UDim2.new(0,20,0.42,0)
+    denyTitle.BackgroundTransparency = 1
+    denyTitle.TextColor3 = Color3.fromRGB(255,255,255)
+    denyTitle.Font = Enum.Font.GothamBlack
+    denyTitle.TextSize = 18
+    denyTitle.Text = "You do not have permission to use this script"
+    denyTitle.TextWrapped = true
+    denyTitle.ZIndex = 201
+    denyTitle.Parent = denyOverlay
+
+    local denyId = Instance.new("TextLabel")
+    denyId.Size = UDim2.new(1,-40,0,20)
+    denyId.Position = UDim2.new(0,20,0.62,0)
+    denyId.BackgroundTransparency = 1
+    denyId.TextColor3 = Color3.fromRGB(120,120,150)
+    denyId.Font = Enum.Font.Gotham
+    denyId.TextSize = 12
+    denyId.Text = "Your UserId: "..tostring(LocalPlayer.UserId)
+    denyId.ZIndex = 201
+    denyId.Parent = denyOverlay
+end
 
 print("[Universal Script] Loaded! Press 🚀 button on the hub to show/hide Fly System.")
 
