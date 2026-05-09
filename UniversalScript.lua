@@ -2132,46 +2132,53 @@ if not isOwner then
     pcall(function() denyGui.Parent = game:GetService("CoreGui") end)
 
     local denyOverlay = Instance.new("Frame")
-    denyOverlay.Size = UDim2.new(0, 320, 0, 180)
-    denyOverlay.Position = UDim2.new(0.5, -160, 0.5, -90)
-    denyOverlay.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+    denyOverlay.Size = UDim2.new(0, 380, 0, 220)
+    denyOverlay.Position = UDim2.new(0.5, -190, 0.5, -110)
+    denyOverlay.BackgroundColor3 = Color3.fromRGB(210, 55, 55)
     denyOverlay.BackgroundTransparency = 0
     denyOverlay.BorderSizePixel = 0
     denyOverlay.ZIndex = 200
     denyOverlay.Parent = denyGui
     Instance.new("UICorner", denyOverlay).CornerRadius = UDim.new(0, 14)
 
+    -- Darker red outline
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(130, 20, 20)
+    stroke.Thickness = 3
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = denyOverlay
+
     local lockIcon = Instance.new("TextLabel")
-    lockIcon.Size = UDim2.new(1, 0, 0, 50)
-    lockIcon.Position = UDim2.new(0, 0, 0, 10)
+    lockIcon.Size = UDim2.new(1, 0, 0, 60)
+    lockIcon.Position = UDim2.new(0, 0, 0, 12)
     lockIcon.BackgroundTransparency = 1
     lockIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
     lockIcon.Font = Enum.Font.GothamBlack
-    lockIcon.TextSize = 36
+    lockIcon.TextSize = 42
     lockIcon.Text = "🔒"
     lockIcon.ZIndex = 201
     lockIcon.Parent = denyOverlay
 
     local denyTitle = Instance.new("TextLabel")
-    denyTitle.Size = UDim2.new(1, -20, 0, 40)
-    denyTitle.Position = UDim2.new(0, 10, 0, 60)
+    denyTitle.Size = UDim2.new(1, -24, 0, 50)
+    denyTitle.Position = UDim2.new(0, 12, 0, 76)
     denyTitle.BackgroundTransparency = 1
     denyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
     denyTitle.Font = Enum.Font.GothamBlack
-    denyTitle.TextSize = 15
+    denyTitle.TextSize = 17
     denyTitle.Text = "You do not have permission\nto use this script"
     denyTitle.TextWrapped = true
     denyTitle.ZIndex = 201
     denyTitle.Parent = denyOverlay
 
     local denyId = Instance.new("TextLabel")
-    denyId.Size = UDim2.new(1, -20, 0, 30)
-    denyId.Position = UDim2.new(0, 10, 0, 138)
+    denyId.Size = UDim2.new(1, -24, 0, 36)
+    denyId.Position = UDim2.new(0, 12, 0, 170)
     denyId.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     denyId.BackgroundTransparency = 0
     denyId.TextColor3 = Color3.fromRGB(255, 255, 255)
     denyId.Font = Enum.Font.GothamBold
-    denyId.TextSize = 15
+    denyId.TextSize = 16
     denyId.Text = "Your UserId: "..tostring(LocalPlayer.UserId)
     denyId.BorderSizePixel = 0
     denyId.ZIndex = 201
