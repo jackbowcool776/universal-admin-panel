@@ -406,11 +406,16 @@ LocalPlayer.CharacterAdded:Connect(function(char)
             end
         end)
     end
-    if JumpPowerValue and JumpPowerValue ~= 50 then
-        local h = getHumanoid()
-        if h then
+    -- Always restore jump to correct value on respawn
+    local h = getHumanoid()
+    if h then
+        if States.InfiniteJump or JumpPowerValue ~= OriginalJumpHeight then
             pcall(function() h.JumpHeight = JumpPowerValue end)
             pcall(function() h.JumpPower = JumpPowerValue end)
+        else
+            -- Restore to original defaults
+            pcall(function() h.JumpHeight = OriginalJumpHeight end)
+            pcall(function() h.JumpPower = OriginalJumpPower end)
         end
     end
 end)
@@ -1758,6 +1763,7 @@ end, "GodMode")
 local freezeBodyPos = nil
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not isOwner then return end
     if gameProcessed then return end
 
     -- Right click cancels nothing now (no marker to clear)
@@ -2006,6 +2012,7 @@ end
 -- CHAT COMMANDS
 -- =====================
 LocalPlayer.Chatted:Connect(function(msg)
+    if not isOwner then return end
     local args = string.lower(msg):split(" ")
     local cmd = args[1]
     if cmd == "!fly" then
