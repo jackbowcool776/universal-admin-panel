@@ -2218,39 +2218,6 @@ end
 -- =====================
 -- CHAT COMMANDS
 -- =====================
-
-    -- Current whitelist display
-    makeSection(wlContent, "Current Whitelist")
-
-    local wlScroll = Instance.new("ScrollingFrame")
-    wlScroll.Size = UDim2.new(1,0,0,120)
-    wlScroll.BackgroundColor3 = COLORS.row
-    wlScroll.BorderSizePixel = 0
-    wlScroll.ScrollBarThickness = 3
-    wlScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
-    wlScroll.CanvasSize = UDim2.new(0,0,0,0)
-    wlScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    wlScroll.Parent = wlContent
-    Instance.new("UICorner", wlScroll).CornerRadius = UDim.new(0,8)
-
-    local wlLayout = Instance.new("UIListLayout")
-    wlLayout.Padding = UDim.new(0,4)
-    wlLayout.Parent = wlScroll
-
-    local wlPad = Instance.new("UIPadding")
-    wlPad.PaddingTop = UDim.new(0,6)
-    wlPad.PaddingLeft = UDim.new(0,8)
-    wlPad.PaddingRight = UDim.new(0,8)
-    wlPad.PaddingBottom = UDim.new(0,6)
-    wlPad.Parent = wlScroll
-
-    rebuildWLList()
-
-    -- Add by UserId
-
--- =====================
--- CHAT COMMANDS
--- =====================
 LocalPlayer.Chatted:Connect(function(msg)
     local args = string.lower(msg):split(" ")
     local cmd = args[1]
