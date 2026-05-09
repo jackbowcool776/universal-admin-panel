@@ -1,7 +1,12 @@
 -- Universal Script by Claude
 -- Main hub + separate Fly System window
 
-task.wait(3)
+-- Wait for game to fully load
+task.wait(1)
+pcall(function()
+    if not game:IsLoaded() then game.Loaded:Wait() end
+end)
+task.wait(0.5)
 
 -- =====================
 -- WHITELIST CONFIG
