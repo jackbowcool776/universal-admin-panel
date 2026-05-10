@@ -173,44 +173,56 @@ local moveTabFlyBox = nil
 
 -- =====================
 -- GOD MODE
--- Blocks damage remotes and keeps health maxed
--- Works on games that use client-side damage remotes
+-- Blocks damage remotes so server never receives damage signal
+-- Only works on games that use client-side damage remotes
 -- =====================
 local godModeOn = false
 local godModeConn = nil
-local godModeHook = nil
 local originalNamecall = nil
+local blockedCount = 0
+
+local function detectDamageRemotes()
+    -- Scan for any remotes that look like damage remotes
+    local found = {}
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local name = obj.Name:lower()
+            if name:find("damage") or name:find("hurt") or name:find("kill")
+            or name:find("hit") or name:find("dead") or name:find("death") then
+                table.insert(found, obj:GetFullName())
+            end
+        end
+    end
+    return found
+end
 
 local function enableGodMode()
     godModeOn = true
+    blockedCount = 0
 
-    -- Method 1: Keep health maxed every frame
-    godModeConn = RunService.Heartbeat:Connect(function()
-        if not godModeOn then
-            godModeConn:Disconnect()
-            godModeConn = nil
-            return
-        end
-        local hum = getHumanoid()
-        if hum then
-            if hum.Health < hum.MaxHealth then
-                hum.Health = hum.MaxHealth
-            end
-        end
-    end)
+    -- Check if any damage remotes exist first
+    local remotes = detectDamageRemotes()
+    if #remotes > 0 then
+        notify("God Mode", "ON — found "..#remotes.." damage remote(s)!")
+        for _, r in ipairs(remotes) do print("[GOD MODE] Blocking: "..r) end
+    else
+        notify("God Mode", "ON — no damage remotes found, may not work in this game")
+        print("[GOD MODE] Warning: No damage remotes found — this game likely uses server-side damage")
+    end
 
-    -- Method 2: Block damage remotes via metatable hook
+    -- Hook metatable to block damage remotes
     pcall(function()
         local mt = getrawmetatable(game)
         originalNamecall = mt.__namecall
         setreadonly(mt, false)
         mt.__namecall = newcclosure(function(self, ...)
             local method = getnamecallmethod()
-            if method == "FireServer" or method == "InvokeServer" then
+            if (method == "FireServer" or method == "InvokeServer") and godModeOn then
                 local name = self.Name:lower()
-                -- Block any remote that looks like it deals damage
                 if name:find("damage") or name:find("hurt") or name:find("kill")
                 or name:find("hit") or name:find("dead") or name:find("death") then
+                    blockedCount = blockedCount + 1
+                    print("[GOD MODE] Blocked: "..self:GetFullName())
                     return -- block it
                 end
             end
@@ -218,15 +230,11 @@ local function enableGodMode()
         end)
         setreadonly(mt, true)
     end)
-
-    notify("God Mode", "ON — blocking damage!")
 end
 
 local function disableGodMode()
     godModeOn = false
-    if godModeConn then godModeConn:Disconnect() godModeConn = nil end
 
-    -- Restore original namecall
     pcall(function()
         if originalNamecall then
             local mt = getrawmetatable(game)
@@ -237,7 +245,12 @@ local function disableGodMode()
         end
     end)
 
-    notify("God Mode", "OFF")
+    if blockedCount > 0 then
+        notify("God Mode", "OFF — blocked "..blockedCount.." damage signals!")
+    else
+        notify("God Mode", "OFF — no signals were blocked (game uses server-side damage)")
+    end
+    blockedCount = 0
 end
 
 -- =====================
@@ -2468,6 +2481,8 @@ end
             end
         end
     end)
+
+end -- end isOwner whitelist tab
 
 -- =====================
 -- CHAT COMMANDS
