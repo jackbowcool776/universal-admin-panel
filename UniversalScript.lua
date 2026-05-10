@@ -2088,12 +2088,11 @@ if isOwner then
         return l
     end
 
-    -- Runtime whitelist
+    -- Runtime whitelist: stores {id=number, name=string}
     local runtimeWhitelist = {}
 
     makeWLSection("Whitelisted Players")
 
-    -- Whitelisted players scroll
     local wlScroll = Instance.new("ScrollingFrame")
     wlScroll.Size = UDim2.new(1,0,0,130)
     wlScroll.BackgroundColor3 = COLORS.row
@@ -2129,7 +2128,7 @@ if isOwner then
             empty.Text = "No players whitelisted yet"
             empty.Parent = wlScroll
         else
-            for i, id in ipairs(runtimeWhitelist) do
+            for i, entry in ipairs(runtimeWhitelist) do
                 local row = Instance.new("Frame")
                 row.Size = UDim2.new(1,0,0,28)
                 row.BackgroundColor3 = COLORS.input
@@ -2138,23 +2137,24 @@ if isOwner then
                 Instance.new("UICorner", row).CornerRadius = UDim.new(0,6)
 
                 local idLbl = Instance.new("TextLabel")
-                idLbl.Size = UDim2.new(1,-36,1,0)
+                idLbl.Size = UDim2.new(1,-42,1,0)
                 idLbl.Position = UDim2.new(0,8,0,0)
                 idLbl.BackgroundTransparency = 1
                 idLbl.TextColor3 = COLORS.text
                 idLbl.Font = Enum.Font.GothamBold
                 idLbl.TextSize = 12
                 idLbl.TextXAlignment = Enum.TextXAlignment.Left
-                idLbl.Text = tostring(id)
+                -- Show name if available, otherwise show ID
+                idLbl.Text = entry.name ~= "" and entry.name.." ("..entry.id..")" or tostring(entry.id)
                 idLbl.Parent = row
 
                 local removeBtn = Instance.new("TextButton")
-                removeBtn.Size = UDim2.new(0,28,0,20)
-                removeBtn.Position = UDim2.new(1,-32,0.5,-10)
+                removeBtn.Size = UDim2.new(0,32,0,20)
+                removeBtn.Position = UDim2.new(1,-36,0.5,-10)
                 removeBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
                 removeBtn.TextColor3 = Color3.fromRGB(255,255,255)
                 removeBtn.Font = Enum.Font.GothamBold
-                removeBtn.TextSize = 11
+                removeBtn.TextSize = 12
                 removeBtn.Text = "X"
                 removeBtn.BorderSizePixel = 0
                 removeBtn.Parent = row
@@ -2162,8 +2162,9 @@ if isOwner then
 
                 local idx = i
                 removeBtn.MouseButton1Click:Connect(function()
+                    local removed = runtimeWhitelist[idx]
                     table.remove(runtimeWhitelist, idx)
-                    notify("Whitelist", "Removed "..tostring(id))
+                    notify("Whitelist", "Removed "..(removed.name ~= "" and removed.name or tostring(removed.id)))
                     rebuildWLList()
                 end)
             end
@@ -2205,7 +2206,7 @@ if isOwner then
     addBtn.TextColor3 = Color3.fromRGB(255,255,255)
     addBtn.Font = Enum.Font.GothamBold
     addBtn.TextSize = 12
-    addBtn.Text = "Add ✓"
+    addBtn.Text = "Add"
     addBtn.BorderSizePixel = 0
     addBtn.Parent = addRow
     Instance.new("UICorner", addBtn).CornerRadius = UDim.new(0,6)
@@ -2222,12 +2223,17 @@ if isOwner then
         local id = tonumber(text)
         if not id then notify("Whitelist", "Enter a valid UserId number!") return end
         if id == OWNER_ID then notify("Whitelist", "That's you — you already have access!") return end
-        for _, existing in ipairs(runtimeWhitelist) do
-            if existing == id then notify("Whitelist", id.." already whitelisted!") return end
+        for _, entry in ipairs(runtimeWhitelist) do
+            if entry.id == id then notify("Whitelist", id.." already whitelisted!") return end
         end
-        table.insert(runtimeWhitelist, id)
+        -- Try to find their name from players in server
+        local name = ""
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.UserId == id then name = p.DisplayName break end
+        end
+        table.insert(runtimeWhitelist, {id=id, name=name})
         addBox.Text = ""
-        notify("Whitelist", "Added "..id.."!")
+        notify("Whitelist", "Added "..(name ~= "" and name or tostring(id)).."!")
         rebuildWLList()
     end
 
@@ -2283,8 +2289,8 @@ if isOwner then
             nameLbl.Parent = pRow
 
             local alreadyIn = false
-            for _, id in ipairs(runtimeWhitelist) do
-                if id == p.UserId then alreadyIn = true break end
+            for _, entry in ipairs(runtimeWhitelist) do
+                if entry.id == p.UserId then alreadyIn = true break end
             end
 
             local pBtn = Instance.new("TextButton")
@@ -2294,26 +2300,26 @@ if isOwner then
             pBtn.TextColor3 = Color3.fromRGB(255,255,255)
             pBtn.Font = Enum.Font.GothamBold
             pBtn.TextSize = 11
-            pBtn.Text = alreadyIn and "X Remove" or "Add ✓"
+            pBtn.Text = alreadyIn and "Remove" or "Add"
             pBtn.BorderSizePixel = 0
             pBtn.Parent = pRow
             Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0,5)
 
             pBtn.MouseButton1Click:Connect(function()
                 local found = false
-                for i, id in ipairs(runtimeWhitelist) do
-                    if id == p.UserId then
+                for i, entry in ipairs(runtimeWhitelist) do
+                    if entry.id == p.UserId then
                         table.remove(runtimeWhitelist, i)
                         found = true break
                     end
                 end
                 if found then
-                    pBtn.Text = "Add ✓"
+                    pBtn.Text = "Add"
                     pBtn.BackgroundColor3 = COLORS.switchOn
                     notify("Whitelist", p.DisplayName.." removed!")
                 else
-                    table.insert(runtimeWhitelist, p.UserId)
-                    pBtn.Text = "X Remove"
+                    table.insert(runtimeWhitelist, {id=p.UserId, name=p.DisplayName})
+                    pBtn.Text = "Remove"
                     pBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
                     notify("Whitelist", p.DisplayName.." added!")
                 end
@@ -2340,8 +2346,8 @@ if isOwner then
     local originalIsWhitelisted = isWhitelisted
     isWhitelisted = function(userId)
         if originalIsWhitelisted(userId) then return true end
-        for _, id in ipairs(runtimeWhitelist) do
-            if id == userId then return true end
+        for _, entry in ipairs(runtimeWhitelist) do
+            if entry.id == userId then return true end
         end
         return false
     end
@@ -2448,7 +2454,7 @@ end
     addBtn.TextColor3 = Color3.fromRGB(255,255,255)
     addBtn.Font = Enum.Font.GothamBold
     addBtn.TextSize = 12
-    addBtn.Text = "Add ✓"
+    addBtn.Text = "Add"
     addBtn.BorderSizePixel = 0
     addBtn.Parent = addRow
     Instance.new("UICorner", addBtn).CornerRadius = UDim.new(0,6)
