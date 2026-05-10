@@ -2155,7 +2155,7 @@ if isOwner then
                 removeBtn.TextColor3 = Color3.fromRGB(255,255,255)
                 removeBtn.Font = Enum.Font.GothamBold
                 removeBtn.TextSize = 11
-                removeBtn.Text = "✕"
+                removeBtn.Text = "X"
                 removeBtn.BorderSizePixel = 0
                 removeBtn.Parent = row
                 Instance.new("UICorner", removeBtn).CornerRadius = UDim.new(0,5)
@@ -2294,7 +2294,7 @@ if isOwner then
             pBtn.TextColor3 = Color3.fromRGB(255,255,255)
             pBtn.Font = Enum.Font.GothamBold
             pBtn.TextSize = 11
-            pBtn.Text = alreadyIn and "✕ Remove" or "Add ✓"
+            pBtn.Text = alreadyIn and "X Remove" or "Add ✓"
             pBtn.BorderSizePixel = 0
             pBtn.Parent = pRow
             Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0,5)
@@ -2313,7 +2313,7 @@ if isOwner then
                     notify("Whitelist", p.DisplayName.." removed!")
                 else
                     table.insert(runtimeWhitelist, p.UserId)
-                    pBtn.Text = "✕ Remove"
+                    pBtn.Text = "X Remove"
                     pBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
                     notify("Whitelist", p.DisplayName.." added!")
                 end
@@ -2398,7 +2398,7 @@ end
             removeBtn.TextColor3 = Color3.fromRGB(255,255,255)
             removeBtn.Font = Enum.Font.GothamBold
             removeBtn.TextSize = 11
-            removeBtn.Text = "✕"
+            removeBtn.Text = "X"
             removeBtn.BorderSizePixel = 0
             removeBtn.Parent = row
             Instance.new("UICorner", removeBtn).CornerRadius = UDim.new(0,5)
