@@ -2015,13 +2015,85 @@ end
 
 -- WHITELIST TAB (owner only)
 if isOwner then
-    local wlContent = newTab("🔒 WL")
-    makeSection(wlContent, "Whitelisted Players")
+    -- Create tab button same as others
+    local wlBtn = Instance.new("TextButton")
+    wlBtn.Size = UDim2.new(0, 58, 0, 26)
+    wlBtn.BackgroundColor3 = Color3.fromRGB(35,35,50)
+    wlBtn.TextColor3 = COLORS.subtext
+    wlBtn.Font = Enum.Font.GothamBold
+    wlBtn.TextSize = 9
+    wlBtn.Text = "🔒 WL"
+    wlBtn.BorderSizePixel = 0
+    wlBtn.ZIndex = 10
+    wlBtn.Parent = TabBar
+    Instance.new("UICorner", wlBtn).CornerRadius = UDim.new(0,6)
 
-    -- Runtime whitelist stored in memory
+    -- Fixed frame directly on Main so it doesn't scroll with ScrollArea
+    local wlFrame = Instance.new("Frame")
+    wlFrame.Size = UDim2.new(1,0,1,-(CLOSED_HEIGHT+34))
+    wlFrame.Position = UDim2.new(0,0,0,CLOSED_HEIGHT+34)
+    wlFrame.BackgroundTransparency = 1
+    wlFrame.Visible = false
+    wlFrame.ZIndex = 8
+    wlFrame.Parent = Main
+
+    local wlMainLayout = Instance.new("UIListLayout")
+    wlMainLayout.Padding = UDim.new(0,6)
+    wlMainLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    wlMainLayout.Parent = wlFrame
+
+    local wlMainPad = Instance.new("UIPadding")
+    wlMainPad.PaddingTop = UDim.new(0,8)
+    wlMainPad.PaddingLeft = UDim.new(0,10)
+    wlMainPad.PaddingRight = UDim.new(0,10)
+    wlMainPad.PaddingBottom = UDim.new(0,8)
+    wlMainPad.Parent = wlFrame
+
+    -- Register in tabData
+    tabData["🔒 WL"] = {btn=wlBtn, content=Instance.new("Frame")} -- dummy content
+    wlBtn.MouseButton1Click:Connect(function()
+        -- Hide all other tabs
+        for tname, tinfo in pairs(tabData) do
+            tinfo.content.Visible = false
+            tinfo.btn.BackgroundColor3 = Color3.fromRGB(35,35,50)
+            tinfo.btn.TextColor3 = COLORS.subtext
+        end
+        ScrollArea.Visible = false
+        wlFrame.Visible = true
+        wlBtn.BackgroundColor3 = COLORS.accent
+        wlBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    end)
+
+    -- Also make other tabs hide wlFrame
+    local origSwitchTab = switchTab
+    switchTab = function(name)
+        wlFrame.Visible = false
+        ScrollArea.Visible = true
+        wlBtn.BackgroundColor3 = Color3.fromRGB(35,35,50)
+        wlBtn.TextColor3 = COLORS.subtext
+        origSwitchTab(name)
+    end
+
+    local function makeWLSection(text)
+        local l = Instance.new("TextLabel")
+        l.Size = UDim2.new(1,0,0,14)
+        l.BackgroundTransparency = 1
+        l.TextColor3 = COLORS.subtext
+        l.Font = Enum.Font.GothamBold
+        l.TextSize = 10
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.Text = "── "..text:upper().." ──"
+        l.ZIndex = 9
+        l.Parent = wlFrame
+        return l
+    end
+
+    -- Runtime whitelist
     local runtimeWhitelist = {}
 
-    -- Scroll to show whitelisted players
+    makeWLSection("Whitelisted Players")
+
+    -- Whitelisted players scroll
     local wlScroll = Instance.new("ScrollingFrame")
     wlScroll.Size = UDim2.new(1,0,0,130)
     wlScroll.BackgroundColor3 = COLORS.row
@@ -2029,18 +2101,251 @@ if isOwner then
     wlScroll.ScrollBarThickness = 3
     wlScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
     wlScroll.CanvasSize = UDim2.new(0,0,0,0)
-    wlScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
-    wlScroll.ScrollingEnabled = false
-    wlScroll.Parent = wlContent
+    wlScroll.ScrollingEnabled = true
+    wlScroll.Parent = wlFrame
     Instance.new("UICorner", wlScroll).CornerRadius = UDim.new(0,8)
 
-    wlScroll.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseWheel then
-            local newPos = wlScroll.CanvasPosition.Y - (input.Position.Z * 36)
-            local maxScroll = math.max(0, wlScroll.CanvasSize.Y.Offset - wlScroll.AbsoluteSize.Y)
-            wlScroll.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, maxScroll))
+    local wlLayout = Instance.new("UIListLayout")
+    wlLayout.Padding = UDim.new(0,4)
+    wlLayout.Parent = wlScroll
+    local wlPad = Instance.new("UIPadding")
+    wlPad.PaddingTop = UDim.new(0,6)
+    wlPad.PaddingLeft = UDim.new(0,8)
+    wlPad.PaddingRight = UDim.new(0,8)
+    wlPad.PaddingBottom = UDim.new(0,6)
+    wlPad.Parent = wlScroll
+
+    local function rebuildWLList()
+        for _, c in pairs(wlScroll:GetChildren()) do
+            if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end
+        end
+        if #runtimeWhitelist == 0 then
+            local empty = Instance.new("TextLabel")
+            empty.Size = UDim2.new(1,0,0,24)
+            empty.BackgroundTransparency = 1
+            empty.TextColor3 = COLORS.subtext
+            empty.Font = Enum.Font.Gotham
+            empty.TextSize = 12
+            empty.Text = "No players whitelisted yet"
+            empty.Parent = wlScroll
+        else
+            for i, id in ipairs(runtimeWhitelist) do
+                local row = Instance.new("Frame")
+                row.Size = UDim2.new(1,0,0,28)
+                row.BackgroundColor3 = COLORS.input
+                row.BorderSizePixel = 0
+                row.Parent = wlScroll
+                Instance.new("UICorner", row).CornerRadius = UDim.new(0,6)
+
+                local idLbl = Instance.new("TextLabel")
+                idLbl.Size = UDim2.new(1,-36,1,0)
+                idLbl.Position = UDim2.new(0,8,0,0)
+                idLbl.BackgroundTransparency = 1
+                idLbl.TextColor3 = COLORS.text
+                idLbl.Font = Enum.Font.GothamBold
+                idLbl.TextSize = 12
+                idLbl.TextXAlignment = Enum.TextXAlignment.Left
+                idLbl.Text = tostring(id)
+                idLbl.Parent = row
+
+                local removeBtn = Instance.new("TextButton")
+                removeBtn.Size = UDim2.new(0,28,0,20)
+                removeBtn.Position = UDim2.new(1,-32,0.5,-10)
+                removeBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
+                removeBtn.TextColor3 = Color3.fromRGB(255,255,255)
+                removeBtn.Font = Enum.Font.GothamBold
+                removeBtn.TextSize = 11
+                removeBtn.Text = "✕"
+                removeBtn.BorderSizePixel = 0
+                removeBtn.Parent = row
+                Instance.new("UICorner", removeBtn).CornerRadius = UDim.new(0,5)
+
+                local idx = i
+                removeBtn.MouseButton1Click:Connect(function()
+                    table.remove(runtimeWhitelist, idx)
+                    notify("Whitelist", "Removed "..tostring(id))
+                    rebuildWLList()
+                end)
+            end
+        end
+        task.wait()
+        wlScroll.CanvasSize = UDim2.new(0,0,0,wlLayout.AbsoluteContentSize.Y + 12)
+    end
+
+    rebuildWLList()
+
+    -- Add by UserId
+    makeWLSection("Add by UserId")
+
+    local addRow = Instance.new("Frame")
+    addRow.Size = UDim2.new(1,0,0,34)
+    addRow.BackgroundColor3 = COLORS.row
+    addRow.BorderSizePixel = 0
+    addRow.Parent = wlFrame
+    Instance.new("UICorner", addRow).CornerRadius = UDim.new(0,8)
+
+    local addBox = Instance.new("TextBox")
+    addBox.Size = UDim2.new(1,-82,0,26)
+    addBox.Position = UDim2.new(0,4,0.5,-13)
+    addBox.BackgroundColor3 = COLORS.input
+    addBox.TextColor3 = COLORS.text
+    addBox.Font = Enum.Font.GothamBold
+    addBox.TextSize = 13
+    addBox.Text = ""
+    addBox.PlaceholderText = "Enter UserId..."
+    addBox.BorderSizePixel = 0
+    addBox.ClearTextOnFocus = false
+    addBox.Parent = addRow
+    Instance.new("UICorner", addBox).CornerRadius = UDim.new(0,6)
+
+    local addBtn = Instance.new("TextButton")
+    addBtn.Size = UDim2.new(0,70,0,26)
+    addBtn.Position = UDim2.new(1,-74,0.5,-13)
+    addBtn.BackgroundColor3 = COLORS.switchOn
+    addBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    addBtn.Font = Enum.Font.GothamBold
+    addBtn.TextSize = 12
+    addBtn.Text = "Add ✓"
+    addBtn.BorderSizePixel = 0
+    addBtn.Parent = addRow
+    Instance.new("UICorner", addBtn).CornerRadius = UDim.new(0,6)
+
+    -- Numbers only
+    addBox.Changed:Connect(function(prop)
+        if prop == "Text" then
+            local filtered = addBox.Text:gsub("[^%d]", "")
+            if filtered ~= addBox.Text then addBox.Text = filtered end
         end
     end)
+
+    local function tryAddUser(text)
+        local id = tonumber(text)
+        if not id then notify("Whitelist", "Enter a valid UserId number!") return end
+        if id == OWNER_ID then notify("Whitelist", "That's you — you already have access!") return end
+        for _, existing in ipairs(runtimeWhitelist) do
+            if existing == id then notify("Whitelist", id.." already whitelisted!") return end
+        end
+        table.insert(runtimeWhitelist, id)
+        addBox.Text = ""
+        notify("Whitelist", "Added "..id.."!")
+        rebuildWLList()
+    end
+
+    addBtn.MouseButton1Click:Connect(function() tryAddUser(addBox.Text) end)
+    addBox.FocusLost:Connect(function(enter) if enter then tryAddUser(addBox.Text) end end)
+
+    -- Players in server
+    makeWLSection("Players in Server")
+
+    local paScroll = Instance.new("ScrollingFrame")
+    paScroll.Size = UDim2.new(1,0,0,140)
+    paScroll.BackgroundColor3 = COLORS.row
+    paScroll.BorderSizePixel = 0
+    paScroll.ScrollBarThickness = 3
+    paScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
+    paScroll.CanvasSize = UDim2.new(0,0,0,0)
+    paScroll.ScrollingEnabled = true
+    paScroll.Parent = wlFrame
+    Instance.new("UICorner", paScroll).CornerRadius = UDim.new(0,8)
+
+    local paLayout = Instance.new("UIListLayout")
+    paLayout.Padding = UDim.new(0,4)
+    paLayout.Parent = paScroll
+    local paPad = Instance.new("UIPadding")
+    paPad.PaddingTop = UDim.new(0,6)
+    paPad.PaddingLeft = UDim.new(0,8)
+    paPad.PaddingRight = UDim.new(0,8)
+    paPad.PaddingBottom = UDim.new(0,6)
+    paPad.Parent = paScroll
+
+    local function buildPlayerList()
+        for _, c in pairs(paScroll:GetChildren()) do
+            if c:IsA("Frame") then c:Destroy() end
+        end
+        for _, p in pairs(Players:GetPlayers()) do
+            if p == LocalPlayer then continue end
+            local pRow = Instance.new("Frame")
+            pRow.Size = UDim2.new(1,0,0,28)
+            pRow.BackgroundColor3 = COLORS.input
+            pRow.BorderSizePixel = 0
+            pRow.Parent = paScroll
+            Instance.new("UICorner", pRow).CornerRadius = UDim.new(0,6)
+
+            local nameLbl = Instance.new("TextLabel")
+            nameLbl.Size = UDim2.new(1,-80,1,0)
+            nameLbl.Position = UDim2.new(0,8,0,0)
+            nameLbl.BackgroundTransparency = 1
+            nameLbl.TextColor3 = COLORS.text
+            nameLbl.Font = Enum.Font.Gotham
+            nameLbl.TextSize = 11
+            nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+            nameLbl.Text = p.DisplayName.." ("..p.UserId..")"
+            nameLbl.Parent = pRow
+
+            local alreadyIn = false
+            for _, id in ipairs(runtimeWhitelist) do
+                if id == p.UserId then alreadyIn = true break end
+            end
+
+            local pBtn = Instance.new("TextButton")
+            pBtn.Size = UDim2.new(0,72,0,20)
+            pBtn.Position = UDim2.new(1,-76,0.5,-10)
+            pBtn.BackgroundColor3 = alreadyIn and Color3.fromRGB(180,40,40) or COLORS.switchOn
+            pBtn.TextColor3 = Color3.fromRGB(255,255,255)
+            pBtn.Font = Enum.Font.GothamBold
+            pBtn.TextSize = 11
+            pBtn.Text = alreadyIn and "✕ Remove" or "Add ✓"
+            pBtn.BorderSizePixel = 0
+            pBtn.Parent = pRow
+            Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0,5)
+
+            pBtn.MouseButton1Click:Connect(function()
+                local found = false
+                for i, id in ipairs(runtimeWhitelist) do
+                    if id == p.UserId then
+                        table.remove(runtimeWhitelist, i)
+                        found = true break
+                    end
+                end
+                if found then
+                    pBtn.Text = "Add ✓"
+                    pBtn.BackgroundColor3 = COLORS.switchOn
+                    notify("Whitelist", p.DisplayName.." removed!")
+                else
+                    table.insert(runtimeWhitelist, p.UserId)
+                    pBtn.Text = "✕ Remove"
+                    pBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
+                    notify("Whitelist", p.DisplayName.." added!")
+                end
+                rebuildWLList()
+            end)
+        end
+        task.wait()
+        paScroll.CanvasSize = UDim2.new(0,0,0,paLayout.AbsoluteContentSize.Y + 12)
+    end
+
+    buildPlayerList()
+
+    local lastRefresh = 0
+    RunService.Heartbeat:Connect(function()
+        local now = tick()
+        if now - lastRefresh < 1 then return end
+        lastRefresh = now
+        buildPlayerList()
+    end)
+
+    Players.PlayerAdded:Connect(function() buildPlayerList() end)
+    Players.PlayerRemoving:Connect(function() buildPlayerList() end)
+
+    local originalIsWhitelisted = isWhitelisted
+    isWhitelisted = function(userId)
+        if originalIsWhitelisted(userId) then return true end
+        for _, id in ipairs(runtimeWhitelist) do
+            if id == userId then return true end
+        end
+        return false
+    end
+end
 
     local wlLayout = Instance.new("UIListLayout")
     wlLayout.Padding = UDim.new(0,4)
@@ -2157,168 +2462,6 @@ if isOwner then
             end
         end
     end)
-
-    local function tryAddUser(text)
-        local id = tonumber(text)
-        if not id then
-            notify("Whitelist", "Enter a valid UserId number!")
-            return
-        end
-        if id == OWNER_ID then
-            notify("Whitelist", "That's you — you already have access!")
-            return
-        end
-        for _, existing in ipairs(runtimeWhitelist) do
-            if existing == id then
-                notify("Whitelist", id.." is already whitelisted!")
-                return
-            end
-        end
-        table.insert(runtimeWhitelist, id)
-        addBox.Text = ""
-        notify("Whitelist", "Added "..id.."!")
-        rebuildWLList()
-    end
-
-    addBtn.MouseButton1Click:Connect(function()
-        tryAddUser(addBox.Text)
-    end)
-
-    -- Also add on Enter key
-    addBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            tryAddUser(addBox.Text)
-        end
-    end)
-
-    -- Add players in server
-    makeSection(wlContent, "Players in Server")
-
-    local paScroll = Instance.new("ScrollingFrame")
-    paScroll.Size = UDim2.new(1,0,0,120)
-    paScroll.BackgroundColor3 = COLORS.row
-    paScroll.BorderSizePixel = 0
-    paScroll.ScrollBarThickness = 3
-    paScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
-    paScroll.CanvasSize = UDim2.new(0,0,0,0)
-    paScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
-    paScroll.ScrollingEnabled = false
-    paScroll.Parent = wlContent
-    Instance.new("UICorner", paScroll).CornerRadius = UDim.new(0,8)
-
-    -- Manual mouse wheel scroll since it's nested inside another ScrollingFrame
-    paScroll.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseWheel then
-            local newPos = paScroll.CanvasPosition.Y - (input.Position.Z * 36)
-            local maxScroll = math.max(0, paScroll.CanvasSize.Y.Offset - paScroll.AbsoluteSize.Y)
-            paScroll.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, maxScroll))
-        end
-    end)
-
-    local paLayout = Instance.new("UIListLayout")
-    paLayout.Padding = UDim.new(0,4)
-    paLayout.Parent = paScroll
-    local paPad = Instance.new("UIPadding")
-    paPad.PaddingTop = UDim.new(0,6)
-    paPad.PaddingLeft = UDim.new(0,8)
-    paPad.PaddingRight = UDim.new(0,8)
-    paPad.PaddingBottom = UDim.new(0,6)
-    paPad.Parent = paScroll
-
-    local function buildPlayerList()
-        for _, c in pairs(paScroll:GetChildren()) do
-            if c:IsA("Frame") then c:Destroy() end
-        end
-        for _, p in pairs(Players:GetPlayers()) do
-            if p == LocalPlayer then continue end
-            local pRow = Instance.new("Frame")
-            pRow.Size = UDim2.new(1,0,0,28)
-            pRow.BackgroundColor3 = COLORS.input
-            pRow.BorderSizePixel = 0
-            pRow.Parent = paScroll
-            Instance.new("UICorner", pRow).CornerRadius = UDim.new(0,6)
-
-            local nameLbl = Instance.new("TextLabel")
-            nameLbl.Size = UDim2.new(1,-80,1,0)
-            nameLbl.Position = UDim2.new(0,8,0,0)
-            nameLbl.BackgroundTransparency = 1
-            nameLbl.TextColor3 = COLORS.text
-            nameLbl.Font = Enum.Font.Gotham
-            nameLbl.TextSize = 11
-            nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-            nameLbl.Text = p.DisplayName.." ("..p.UserId..")"
-            nameLbl.Parent = pRow
-
-            local alreadyIn = false
-            for _, id in ipairs(runtimeWhitelist) do
-                if id == p.UserId then alreadyIn = true break end
-            end
-
-            local pBtn = Instance.new("TextButton")
-            pBtn.Size = UDim2.new(0,64,0,20)
-            pBtn.Position = UDim2.new(1,-68,0.5,-10)
-            pBtn.BackgroundColor3 = alreadyIn and Color3.fromRGB(180,40,40) or COLORS.switchOn
-            pBtn.TextColor3 = Color3.fromRGB(255,255,255)
-            pBtn.Font = Enum.Font.GothamBold
-            pBtn.TextSize = 11
-            pBtn.Text = alreadyIn and "✕ Remove" or "Add ✓"
-            pBtn.BorderSizePixel = 0
-            pBtn.Parent = pRow
-            Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0,5)
-
-            pBtn.MouseButton1Click:Connect(function()
-                -- Toggle add/remove
-                local found = false
-                for i, id in ipairs(runtimeWhitelist) do
-                    if id == p.UserId then
-                        table.remove(runtimeWhitelist, i)
-                        found = true
-                        break
-                    end
-                end
-                if found then
-                    pBtn.Text = "Add ✓"
-                    pBtn.BackgroundColor3 = COLORS.switchOn
-                    notify("Whitelist", p.DisplayName.." removed!")
-                else
-                    table.insert(runtimeWhitelist, p.UserId)
-                    pBtn.Text = "✕ Remove"
-                    pBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
-                    notify("Whitelist", p.DisplayName.." added!")
-                end
-                rebuildWLList()
-            end)
-        end
-        -- Fix canvas size for scroll
-        paScroll.CanvasSize = UDim2.new(0,0,0,paLayout.AbsoluteContentSize.Y + 12)
-    end
-
-    buildPlayerList()
-
-    -- Auto refresh player list every second
-    local lastRefresh = 0
-    RunService.Heartbeat:Connect(function()
-        local now = tick()
-        if now - lastRefresh < 1 then return end
-        lastRefresh = now
-        buildPlayerList()
-    end)
-
-    -- Also refresh when players join/leave
-    Players.PlayerAdded:Connect(function() buildPlayerList() end)
-    Players.PlayerRemoving:Connect(function() buildPlayerList() end)
-
-    -- Check if a userId is whitelisted at runtime
-    -- Override isWhitelisted to also check runtimeWhitelist
-    local originalIsWhitelisted = isWhitelisted
-    isWhitelisted = function(userId)
-        if originalIsWhitelisted(userId) then return true end
-        for _, id in ipairs(runtimeWhitelist) do
-            if id == userId then return true end
-        end
-        return false
-    end
-end
 
 -- =====================
 -- CHAT COMMANDS
