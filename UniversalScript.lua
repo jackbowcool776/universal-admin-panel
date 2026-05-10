@@ -2030,8 +2030,17 @@ if isOwner then
     wlScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
     wlScroll.CanvasSize = UDim2.new(0,0,0,0)
     wlScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
+    wlScroll.ScrollingEnabled = false
     wlScroll.Parent = wlContent
     Instance.new("UICorner", wlScroll).CornerRadius = UDim.new(0,8)
+
+    wlScroll.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseWheel then
+            local newPos = wlScroll.CanvasPosition.Y - (input.Position.Z * 36)
+            local maxScroll = math.max(0, wlScroll.CanvasSize.Y.Offset - wlScroll.AbsoluteSize.Y)
+            wlScroll.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, maxScroll))
+        end
+    end)
 
     local wlLayout = Instance.new("UIListLayout")
     wlLayout.Padding = UDim.new(0,4)
@@ -2193,8 +2202,18 @@ if isOwner then
     paScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
     paScroll.CanvasSize = UDim2.new(0,0,0,0)
     paScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
+    paScroll.ScrollingEnabled = false
     paScroll.Parent = wlContent
     Instance.new("UICorner", paScroll).CornerRadius = UDim.new(0,8)
+
+    -- Manual mouse wheel scroll since it's nested inside another ScrollingFrame
+    paScroll.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseWheel then
+            local newPos = paScroll.CanvasPosition.Y - (input.Position.Z * 36)
+            local maxScroll = math.max(0, paScroll.CanvasSize.Y.Offset - paScroll.AbsoluteSize.Y)
+            paScroll.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, maxScroll))
+        end
+    end)
 
     local paLayout = Instance.new("UIListLayout")
     paLayout.Padding = UDim.new(0,4)
