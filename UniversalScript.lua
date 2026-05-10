@@ -2029,7 +2029,7 @@ if isOwner then
     wlScroll.ScrollBarThickness = 3
     wlScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
     wlScroll.CanvasSize = UDim2.new(0,0,0,0)
-    wlScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    wlScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
     wlScroll.Parent = wlContent
     Instance.new("UICorner", wlScroll).CornerRadius = UDim.new(0,8)
 
@@ -2096,6 +2096,9 @@ if isOwner then
                 rebuildWLList()
             end)
         end
+        -- Update canvas size for scrolling
+        task.wait()
+        wlScroll.CanvasSize = UDim2.new(0,0,0,wlLayout.AbsoluteContentSize.Y + 12)
     end
 
     rebuildWLList()
@@ -2183,13 +2186,13 @@ if isOwner then
     makeSection(wlContent, "Players in Server")
 
     local paScroll = Instance.new("ScrollingFrame")
-    paScroll.Size = UDim2.new(1,0,0,100)
+    paScroll.Size = UDim2.new(1,0,0,120)
     paScroll.BackgroundColor3 = COLORS.row
     paScroll.BorderSizePixel = 0
     paScroll.ScrollBarThickness = 3
     paScroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,110)
     paScroll.CanvasSize = UDim2.new(0,0,0,0)
-    paScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    paScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
     paScroll.Parent = wlContent
     Instance.new("UICorner", paScroll).CornerRadius = UDim.new(0,8)
 
@@ -2273,9 +2276,18 @@ if isOwner then
 
     buildPlayerList()
 
-    makeButton(wlContent, "🔄 Refresh Player List", function()
+    -- Auto refresh player list every second
+    local lastRefresh = 0
+    RunService.Heartbeat:Connect(function()
+        local now = tick()
+        if now - lastRefresh < 1 then return end
+        lastRefresh = now
         buildPlayerList()
     end)
+
+    -- Also refresh when players join/leave
+    Players.PlayerAdded:Connect(function() buildPlayerList() end)
+    Players.PlayerRemoving:Connect(function() buildPlayerList() end)
 
     -- Check if a userId is whitelisted at runtime
     -- Override isWhitelisted to also check runtimeWhitelist
